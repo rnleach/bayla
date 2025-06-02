@@ -1,3 +1,7 @@
+# Text editor, debugger
+*.vim
+bayla-test
+
 # Prerequisites
 *.d
 
