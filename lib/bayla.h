@@ -15,7 +15,7 @@
  * 
  * P(Θ | Model, I) in Jaynes eq 20.1, 20.2 (page 602)
  */
-typedef f64 (*BayesLogPrior)(size num_parms, f64 const *parms, void *user_data);
+typedef f64 (*BayLaLogPrior)(size num_parms, f64 const *parms, void *user_data);
 
 /* The logarithm of a normalized likelihood function for this model and the data. 
  * 
@@ -25,7 +25,7 @@ typedef f64 (*BayesLogPrior)(size num_parms, f64 const *parms, void *user_data);
  *
  * P(Data | Θ, Model, I) in Jaynes eq 20.1, 20.2 (pg 602)
  */
-typedef f64 (*BayesLogLikelihood)(size num_parms, f64 const *parms, void *user_data);
+typedef f64 (*BayLaLogLikelihood)(size num_parms, f64 const *parms, void *user_data);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *
@@ -42,27 +42,27 @@ typedef f64 (*BayesLogLikelihood)(size num_parms, f64 const *parms, void *user_d
 typedef struct
 {
     f64 val;
-} BayesLogValue;
+} BayLaLogValue;
 
-API BayesLogValue bayes_log_value_create(f64 log_domain_value);
-API BayesLogValue bayes_log_value_map_into_log_domain(f64 non_log_domain_value);
-API f64 bayes_log_value_map_out_of_log_domain(BayesLogValue log_val);
-API BayesLogValue bayes_log_value_add(BayesLogValue left, BayesLogValue right);
-API BayesLogValue bayes_log_value_subtract(BayesLogValue left, BayesLogValue right);
-API BayesLogValue bayes_log_value_multiply(BayesLogValue left, BayesLogValue right);
-API BayesLogValue bayes_log_value_divide(BayesLogValue numerator, BayesLogValue denominator);
-API BayesLogValue bayes_log_value_reciprocal(BayesLogValue log_val);
-API BayesLogValue bayes_log_value_power(BayesLogValue base, f64 exponent);
-API BayesLogValue bayes_log_values_sum(size nvals, BayesLogValue *vals);
+API BayLaLogValue bayla_log_value_create(f64 log_domain_value);
+API BayLaLogValue bayla_log_value_map_into_log_domain(f64 non_log_domain_value);
+API f64 bayla_log_value_map_out_of_log_domain(BayLaLogValue log_val);
+API BayLaLogValue bayla_log_value_add(BayLaLogValue left, BayLaLogValue right);
+API BayLaLogValue bayla_log_value_subtract(BayLaLogValue left, BayLaLogValue right);
+API BayLaLogValue bayla_log_value_multiply(BayLaLogValue left, BayLaLogValue right);
+API BayLaLogValue bayla_log_value_divide(BayLaLogValue numerator, BayLaLogValue denominator);
+API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val);
+API BayLaLogValue bayla_log_value_power(BayLaLogValue base, f64 exponent);
+API BayLaLogValue bayla_log_values_sum(size nvals, BayLaLogValue *vals);
 
 /* Functions that have less overflow / underflow / rounding errors than naive implementations.            */
-API f64 bayes_log1mexp(f64 x);                       /* log(1 - exp(-x))                        */
-API f64 bayes_log1pexp(f64 x);                       /* log(1 + exp(+x))                        */
-API f64 bayes_logsumexp(f64 x, f64 y);               /* add two numbers in the log domain.      */
-API f64 bayes_logsumexp_list(size nvals, f64 *vals); /* Sum a list of values in the log domain. */
+API f64 bayla_log1mexp(f64 x);                       /* log(1 - exp(-x))                        */
+API f64 bayla_log1pexp(f64 x);                       /* log(1 + exp(+x))                        */
+API f64 bayla_logsumexp(f64 x, f64 y);               /* add two numbers in the log domain.      */
+API f64 bayla_logsumexp_list(size nvals, f64 *vals); /* Sum a list of values in the log domain. */
 
-BayesLogValue const bayes_log_zero = { .val = -INFINITY };
-BayesLogValue const bayes_log_one = { .val = 0.0 };
+BayLaLogValue const bayla_log_zero = { .val = -INFINITY };
+BayLaLogValue const bayla_log_one = { .val = 0.0 };
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                            Values with an Error Information
@@ -78,9 +78,9 @@ BayesLogValue const bayes_log_one = { .val = 0.0 };
  */
 typedef struct
 {
-    BayesLogValue value;
-    BayesLogValue error;
-} BayesValue;
+    BayLaLogValue value;
+    BayLaLogValue error;
+} BayLaValue;
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                 Generate Random Numbers
@@ -90,13 +90,13 @@ typedef struct
 {
     f64 mu;
     f64 sigma;
-} BayesNormalDistribution;
+} BayLaNormalDistribution;
 
-API BayesNormalDistribution bayes_normal_distribution_create(f64 mean, f64 stddev);
-API f64 bayes_normal_distribution_random_deviate(BayesNormalDistribution *dist, ElkRandomState *state);
+API BayLaNormalDistribution bayla_normal_distribution_create(f64 mean, f64 stddev);
+API f64 bayla_normal_distribution_random_deviate(BayLaNormalDistribution *dist, ElkRandomState *state);
 
 /*---------------------------------------------------------------------------------------------------------------------------
- *                                              Analysis of Bayesian Models
+ *                                              Analysis of BayLaian Models
  *-------------------------------------------------------------------------------------------------------------------------*/
 
 /* Description of a model to be used for a Baysiean analysis. */
@@ -106,32 +106,32 @@ typedef struct
     f64 model_prior_probability;    /* Prior prob *this model* is the correct one. P(Model | I), Jaynes eq. 20.3 (pg 602) */
     size n_parameters;              /* The number of parameters in this model.                                            */
 
-    BayesLogPrior prior;                       /* See typedef above. P(Θ | Model, I), Jaynes eq 20.1, 20.2 (pg 602)       */
-    BayesLogLikelihood likelihood;             /* See typedef above. P(Data | Θ, Model, I), Jaynes eq 20.1, 20.2 (pg 602) */
+    BayLaLogPrior prior;                       /* See typedef above. P(Θ | Model, I), Jaynes eq 20.1, 20.2 (pg 602)       */
+    BayLaLogLikelihood likelihood;             /* See typedef above. P(Data | Θ, Model, I), Jaynes eq 20.1, 20.2 (pg 602) */
 
     f64 *min_parameter_vals;        /* Array n_parameters long of the minimum value parameters can practically have.      */
     f64 *max_parameter_vals;        /* Array n_parameters long of the miximum value parameters can practically have.      */
 
     void *user_data;                /* Any other state or data you may need for evaluating the prior, likelihood, etc.    */
-} BayesModel;
+} BayLaModel;
 
 /* Options for the integrator. Not all integrators use all options. */
 typedef enum
 {
-    BAYES_INTEGRATE_INVALID, 
-    BAYES_INTEGRATE_VEGAS_PLUS,
-    BAYES_INTEGRATE_VEGAS_MISER,
-    BAYES_INTEGRATE_VEGAS, 
-    BAYES_INTEGRATE_MISER,
-    BAYES_INTEGRATE_MONTE_CARLO
-} BayesIntegratorStrategy;
+    BAYLA_INTEGRATE_INVALID, 
+    BAYLA_INTEGRATE_VEGAS_PLUS,
+    BAYLA_INTEGRATE_VEGAS_MISER,
+    BAYLA_INTEGRATE_VEGAS, 
+    BAYLA_INTEGRATE_MISER,
+    BAYLA_INTEGRATE_MONTE_CARLO
+} BayLaIntegratorStrategy;
 
 /* A mesh used for importance sampling in VEGAS based methods. */
-typedef struct BayesVegasMap BayesVegasMap;
+typedef struct BayLaVegasMap BayLaVegasMap;
 
 typedef struct
 {
-    BayesIntegratorStrategy strategy;
+    BayLaIntegratorStrategy strategy;
     union
     {
         /* Simple Monte Carlo Strategy Options. */
@@ -168,7 +168,7 @@ typedef struct
             f64 acceptable_prop_error;   /* If the proportional error falls below this, stop if reached min_samples too.  */
             f64 alpha;                   /* Used to damp the grid refinements, >=0, usually 0.5 to 2.0. 1.5 good default. */
             u64 seed;                    /* Random number generator seed. YOU MUST CHOOSE.                                */
-            BayesVegasMap *map;          /* NULL. A pre-conditioned mesh created by bayes_vegas_map_precondition.         */
+            BayLaVegasMap *map;          /* NULL. A pre-conditioned mesh created by bayla_vegas_map_precondition.         */
         } vegas;
 
         /* VEGAS-MISER Strategy Options. */
@@ -185,7 +185,7 @@ typedef struct
             f64 acceptable_prop_error;   /* If the proportional error falls below this, stop if reached min_samples too.  */
             f64 alpha;                   /* Used to damp the grid refinements, >=0, usually 0.5 to 2.0. 1.5 good default. */
             u64 seed;                    /* Random number generator seed. YOU MUST CHOOSE.                                */
-            BayesVegasMap *map;          /* NULL. A pre-conditioned mesh created by bayes_vegas_map_precondition.         */
+            BayLaVegasMap *map;          /* NULL. A pre-conditioned mesh created by bayla_vegas_map_precondition.         */
         } vegas_miser;
 
         /* VEGAS Plus Strategy Options. */
@@ -200,10 +200,10 @@ typedef struct
             f64 alpha;                   /* Used to damp the grid refinements, >=0, usually 0.5 to 2.0. 1.5 good default. */
             f64 beta;                    /* Used to damp the adaptive sampling. β = 1, no damping, β = 0, no adaption.    */
             u64 seed;                    /* Random number generator seed. YOU MUST CHOOSE.                                */
-            BayesVegasMap *map;          /* NULL. A pre-conditioned mesh created by bayes_vegas_map_precondition.         */
+            BayLaVegasMap *map;          /* NULL. A pre-conditioned mesh created by bayla_vegas_map_precondition.         */
         } vegas_plus;
     };
-} BayesIntegratorOptions;
+} BayLaIntegratorOptions;
 
 /* Parameter values and log-probability samples from a distribution. */
 typedef struct
@@ -211,30 +211,30 @@ typedef struct
     size n_parameters;             /* Number of parameters per sample, or the number of columsn in the *parameters array. */
     PakArrayLedger samples_ledger; /* Ledger for parallel arrays *parameters and *probs.                                  */
     f64 *parameters;               /* elk_len(&samples_ledger) rows x n_parameters columns array.                         */
-    BayesLogValue *probs;          /* Distribution values, array parallel to parameters.                                  */
-} BayesParametersSamples;
+    BayLaLogValue *probs;          /* Distribution values, array parallel to parameters.                                  */
+} BayLaParametersSamples;
 
 /* Precondition a VEGAS mesh with the provided samples. */
-API void bayes_vegas_map_precondition(
-        BayesModel *model,
-        BayesIntegratorOptions *opts,
-        BayesParametersSamples *samples,
+API void bayla_vegas_map_precondition(
+        BayLaModel *model,
+        BayLaIntegratorOptions *opts,
+        BayLaParametersSamples *samples,
         MagStaticArena *perm);
 
 typedef struct
 {
-    BayesIntegratorStrategy strategy; /* Should be passed through from the options.                                       */
-    BayesValue result;                /* The numeric value of the integral and its estimated error.                       */
+    BayLaIntegratorStrategy strategy; /* Should be passed through from the options.                                       */
+    BayLaValue result;                /* The numeric value of the integral and its estimated error.                       */
     size total_samples;               /* Basically the number of function calls.                                          */
     size samples_used;                /* The number of samples used for the reportd integral value.(VEGAS and VEGAS+ only)*/
     f64 chisq;                        /* The Chi-Squared statistic. (VEGAS and VEGAS+ only)                               */
     b32 converged;                    /* true if it stopped by reaching an acceptable error or false otherwise.           */
-} BayesEvidenceResult;
+} BayLaEvidenceResult;
 
 /* Calculate the evidence { p(Data | Model, I) } from Jaynes eq 20.2 using Monte-Carlo integration. */
-API BayesEvidenceResult bayes_calculate_evidence(
-        BayesModel const *model,
-        BayesIntegratorOptions *opts,
+API BayLaEvidenceResult bayla_calculate_evidence(
+        BayLaModel const *model,
+        BayLaIntegratorOptions *opts,
         MagStaticArena scratch);
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -247,19 +247,19 @@ typedef struct
     size n_samples;                  /* The number of samples to take.                                                    */
     size n_burn_in_samples;          /* The number of samples to take before starting to keep them.                       */
     f64 *starting_params;            /* The starting values of the params. This array should be model->n_parameters long. */
-    BayesModel *model;               /* The model posterior to sample from.                                               */
-    BayesParametersSamples *output;  /* Output, recommend using bayes_preconditioning_sampler_args_allocate_and_create.   */
-} BayesPreconditioningSamplerArgs;
+    BayLaModel *model;               /* The model posterior to sample from.                                               */
+    BayLaParametersSamples *output;  /* Output, recommend using bayla_preconditioning_sampler_args_allocate_and_create.   */
+} BayLaPreconditioningSamplerArgs;
 
-API BayesPreconditioningSamplerArgs bayes_preconditioning_sampler_args_allocate_and_create(
-        BayesModel *model,
+API BayLaPreconditioningSamplerArgs bayla_preconditioning_sampler_args_allocate_and_create(
+        BayLaModel *model,
         size n_samples,
         size n_burn_in_samples,
         f64 *starting_params,
         MagStaticArena *arena);
 
-API void bayes_preconditioning_sample(
-        BayesPreconditioningSamplerArgs *args,
+API void bayla_preconditioning_sample(
+        BayLaPreconditioningSamplerArgs *args,
         ElkRandomState *state,
         MagStaticArena scratch);
 
@@ -267,69 +267,69 @@ API void bayes_preconditioning_sample(
  *                                                    Implementations
  *-------------------------------------------------------------------------------------------------------------------------*/
 
-API BayesLogValue bayes_log_value_create(f64 log_domain_value) { return (BayesLogValue){.val = log_domain_value }; }
-API f64 bayes_log_value_map_out_of_log_domain(BayesLogValue log_val) { return exp(log_val.val); }
+API BayLaLogValue bayla_log_value_create(f64 log_domain_value) { return (BayLaLogValue){.val = log_domain_value }; }
+API f64 bayla_log_value_map_out_of_log_domain(BayLaLogValue log_val) { return exp(log_val.val); }
 
-API BayesLogValue 
-bayes_log_value_map_into_log_domain(f64 non_log_domain_value)
+API BayLaLogValue 
+bayla_log_value_map_into_log_domain(f64 non_log_domain_value)
 {
-    return (BayesLogValue){.val = log(non_log_domain_value) };
+    return (BayLaLogValue){.val = log(non_log_domain_value) };
 }
 
 
-API BayesLogValue bayes_log_value_add(BayesLogValue left, BayesLogValue right)
+API BayLaLogValue bayla_log_value_add(BayLaLogValue left, BayLaLogValue right)
 {
-    return (BayesLogValue){.val = bayes_logsumexp(left.val, right.val)};
+    return (BayLaLogValue){.val = bayla_logsumexp(left.val, right.val)};
 }
 
-API BayesLogValue 
-bayes_log_value_subtract(BayesLogValue left, BayesLogValue right)
+API BayLaLogValue 
+bayla_log_value_subtract(BayLaLogValue left, BayLaLogValue right)
 {
     f64 l = left.val;
     f64 r = right.val;
 
-    if(isinf(l) && isinf(r) && r > 0.0) { return (BayesLogValue){ .val = NAN }; }
-    if(l == r) { return (BayesLogValue){ .val = - INFINITY}; }
+    if(isinf(l) && isinf(r) && r > 0.0) { return (BayLaLogValue){ .val = NAN }; }
+    if(l == r) { return (BayLaLogValue){ .val = - INFINITY}; }
 
-    f64 val = l + bayes_log1mexp(l - r);
-    return (BayesLogValue){.val = val };
+    f64 val = l + bayla_log1mexp(l - r);
+    return (BayLaLogValue){.val = val };
 }
 
-API BayesLogValue bayes_log_value_multiply(BayesLogValue left, BayesLogValue right)
+API BayLaLogValue bayla_log_value_multiply(BayLaLogValue left, BayLaLogValue right)
 {
-    return (BayesLogValue){.val = left.val + right.val};
+    return (BayLaLogValue){.val = left.val + right.val};
 }
 
-API BayesLogValue 
-bayes_log_value_divide(BayesLogValue numerator, BayesLogValue denominator)
+API BayLaLogValue 
+bayla_log_value_divide(BayLaLogValue numerator, BayLaLogValue denominator)
 {
-    return (BayesLogValue){.val = numerator.val - denominator.val};
+    return (BayLaLogValue){.val = numerator.val - denominator.val};
 }
 
-API BayesLogValue bayes_log_value_reciprocal(BayesLogValue log_val)
+API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val)
 {
-    return (BayesLogValue){.val = -log_val.val};
+    return (BayLaLogValue){.val = -log_val.val};
 }
 
-API BayesLogValue 
-bayes_log_value_power(BayesLogValue base, f64 exponent)
+API BayLaLogValue 
+bayla_log_value_power(BayLaLogValue base, f64 exponent)
 {
-    return (BayesLogValue){.val = exponent * base.val};
+    return (BayLaLogValue){.val = exponent * base.val};
 }
 
 /* Make sure the cast in the function below is valid. */
-_Static_assert(sizeof(BayesLogValue) == sizeof(f64), "BayesLogValue not wrapper for f64 (double)");
+_Static_assert(sizeof(BayLaLogValue) == sizeof(f64), "BayLaLogValue not wrapper for f64 (double)");
 
-API BayesLogValue 
-bayes_log_values_sum(size nvals, BayesLogValue *vals)
+API BayLaLogValue 
+bayla_log_values_sum(size nvals, BayLaLogValue *vals)
 {
     f64 *log_vals = (f64 *)vals;
-    f64 log_sum = bayes_logsumexp_list(nvals, log_vals);
-    return (BayesLogValue){ .val = log_sum };
+    f64 log_sum = bayla_logsumexp_list(nvals, log_vals);
+    return (BayLaLogValue){ .val = log_sum };
 }
 
 API f64 
-bayes_log1mexp(f64 x)  /* log(1 - exp(-x)) */
+bayla_log1mexp(f64 x)  /* log(1 - exp(-x)) */
 {
     /* Algorithm copied from eq 7 in https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf 
      * on Sept 9, 2024.
@@ -340,7 +340,7 @@ bayes_log1mexp(f64 x)  /* log(1 - exp(-x)) */
 }
 
 API f64
-bayes_log1pexp(f64 x)  /* log(1 + exp(+x)) */
+bayla_log1pexp(f64 x)  /* log(1 + exp(+x)) */
 {
     /* Algorithm copied from eq 10 in https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf 
      * on Sept 9, 2024.
@@ -352,15 +352,15 @@ bayes_log1pexp(f64 x)  /* log(1 + exp(+x)) */
 }
 
 API f64 
-bayes_logsumexp(f64 x, f64 y)
+bayla_logsumexp(f64 x, f64 y)
 {
     if(x == - INFINITY && y == - INFINITY) { return - INFINITY;                }
-    if(x >= y)                             { return x + bayes_log1pexp(y - x); }
-    else                                   { return y + bayes_log1pexp(x - y); }
+    if(x >= y)                             { return x + bayla_log1pexp(y - x); }
+    else                                   { return y + bayla_log1pexp(x - y); }
 }
 
 API f64 
-bayes_logsumexp_list(size nvals, f64 *vals)
+bayla_logsumexp_list(size nvals, f64 *vals)
 {
     /* Use a two pass algorithm */
     f64 max = -INFINITY;
@@ -379,14 +379,14 @@ bayes_logsumexp_list(size nvals, f64 *vals)
     return max + log(result.sum);
 }
 
-static inline BayesNormalDistribution 
-bayes_normal_distribution_create(f64 mean, f64 stddev)
+API BayLaNormalDistribution 
+bayla_normal_distribution_create(f64 mean, f64 stddev)
 {
-    return (BayesNormalDistribution){.mu = mean, .sigma = stddev};
+    return (BayLaNormalDistribution){.mu = mean, .sigma = stddev};
 }
 
-static inline f64 
-bayes_normal_distribution_random_deviate(BayesNormalDistribution *dist, ElkRandomState *state)
+API f64 
+bayla_normal_distribution_random_deviate(BayLaNormalDistribution *dist, ElkRandomState *state)
 {
     f64 u = 0.0, v = 0.0, q = 0.0;
     do 
@@ -407,23 +407,23 @@ bayes_normal_distribution_random_deviate(BayesNormalDistribution *dist, ElkRando
     return dist->mu + dist->sigma * v / u;
 }
 
-static inline BayesLogValue 
-bayes_model_evaluate(BayesModel const *model, f64 const *parameter_vals)
+API BayLaLogValue 
+bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
 {
     size ndim = model->n_parameters;
     void *user_data = model->user_data;
-    BayesLogPrior prior = model->prior;
-    BayesLogLikelihood likelihood = model->likelihood;
+    BayLaLogPrior prior = model->prior;
+    BayLaLogLikelihood likelihood = model->likelihood;
 
     f64 log_prob = prior(ndim, parameter_vals, user_data) + likelihood(ndim, parameter_vals, user_data);
     
-    return bayes_log_value_create(log_prob);
+    return bayla_log_value_create(log_prob);
 }
 
 
-static inline BayesPreconditioningSamplerArgs 
-bayes_preconditioning_sampler_args_allocate_and_create(
-        BayesModel *model,
+API BayLaPreconditioningSamplerArgs 
+bayla_preconditioning_sampler_args_allocate_and_create(
+        BayLaModel *model,
         size n_samples,
         size n_burn_in_samples,
         f64 *starting_params,
@@ -432,14 +432,14 @@ bayes_preconditioning_sampler_args_allocate_and_create(
     size N = model->n_parameters;
 
     /* Need to allocate space for output, everything else should already exist. */
-    BayesParametersSamples *samples = eco_malloc(arena, BayesParametersSamples);
+    BayLaParametersSamples *samples = eco_malloc(arena, BayLaParametersSamples);
     f64 *parameter_samples = eco_nmalloc(arena, N * n_samples, f64);
-    BayesLogValue *probs = eco_nmalloc(arena, n_samples, BayesLogValue);
+    BayLaLogValue *probs = eco_nmalloc(arena, n_samples, BayLaLogValue);
     Assert(probs && parameter_samples && samples);
 
     PakArrayLedger ledger = pak_array_ledger_create(n_samples);
 
-    *samples = (BayesParametersSamples)
+    *samples = (BayLaParametersSamples)
         {
             .n_parameters = N,
             .samples_ledger = ledger,
@@ -447,7 +447,7 @@ bayes_preconditioning_sampler_args_allocate_and_create(
             .probs = probs
         };
 
-    return (BayesPreconditioningSamplerArgs)
+    return (BayLaPreconditioningSamplerArgs)
         {
             .n_samples = n_samples,
             .n_burn_in_samples = n_burn_in_samples,
@@ -457,8 +457,8 @@ bayes_preconditioning_sampler_args_allocate_and_create(
         };
 }
 
-static inline void 
-bayes_preconditioning_sample(BayesPreconditioningSamplerArgs *args, ElkRandomState *state, MagStaticArena scratch)
+API void 
+bayla_preconditioning_sample(BayLaPreconditioningSamplerArgs *args, ElkRandomState *state, MagStaticArena scratch)
 {
     /* This is CRUDELY based on Metropolis-Hastings algorithm. In that algorithm you would add a point to the chain again
      * if you chose not to move. But this algorithm only adds points after you have decided to move to them, but doesn't
@@ -469,12 +469,12 @@ bayes_preconditioning_sample(BayesPreconditioningSamplerArgs *args, ElkRandomSta
     size N = args->model->n_parameters;
     f64 const *starting_params = args->starting_params;
 
-    BayesParametersSamples *samples = args->output;
+    BayLaParametersSamples *samples = args->output;
     PakArrayLedger *out_ledger = &samples->samples_ledger;
     f64 *out_params = samples->parameters;
-    BayesLogValue *probs = samples->probs;
+    BayLaLogValue *probs = samples->probs;
 
-    BayesModel const *model = args->model;
+    BayLaModel const *model = args->model;
     f64 *min_parms = args->model->min_parameter_vals;
     f64 *max_parms = args->model->max_parameter_vals;
 
@@ -486,13 +486,13 @@ bayes_preconditioning_sample(BayesPreconditioningSamplerArgs *args, ElkRandomSta
     Assert(ms && ss && p0 && p);
     memcpy(ms, starting_params, sizeof(f64) * N);
 
-    BayesNormalDistribution norm = bayes_normal_distribution_create(0.0, 1.0);
+    BayLaNormalDistribution norm = bayla_normal_distribution_create(0.0, 1.0);
 
     /* Copy the starting point into the list of parameters and calculate the first value. */
     memcpy(p, starting_params, sizeof(f64) * N);
     memcpy(p0, starting_params, sizeof(f64) * N);
-    BayesLogValue prob = bayes_model_evaluate(model, p);
-    BayesLogValue prob0 = prob;
+    BayLaLogValue prob = bayla_model_evaluate(model, p);
+    BayLaLogValue prob0 = prob;
 
     size n_keep = 0;
     size n_reject = 0;
@@ -524,16 +524,16 @@ bayes_preconditioning_sample(BayesPreconditioningSamplerArgs *args, ElkRandomSta
                 }
                 do
                 {
-                    p[n] = p0[n] + bayes_normal_distribution_random_deviate(&norm, state);
+                    p[n] = p0[n] + bayla_normal_distribution_random_deviate(&norm, state);
                 } while(p[n] < min_parms[n] || p[n] > max_parms[n]);
             }
 
             /* Calculate the probability for this position. */
-            prob = bayes_model_evaluate(model, p);
+            prob = bayla_model_evaluate(model, p);
         } while(isnan(prob.val));
 
         /* Decide whether to move to this point or not. */
-        f64 log_prob_ratio = bayes_log_value_divide(prob, prob0).val;
+        f64 log_prob_ratio = bayla_log_value_divide(prob, prob0).val;
         b32 move = true;
         if(log_prob_ratio < 0.0)
         {
@@ -575,8 +575,8 @@ bayes_preconditioning_sample(BayesPreconditioningSamplerArgs *args, ElkRandomSta
     }
 }
 
-static inline BayesEvidenceResult
-bayes_simple_monte_carlo_integrate(BayesModel const *model, BayesIntegratorOptions const *opts, MagStaticArena scratch)
+API BayLaEvidenceResult
+bayla_simple_monte_carlo_integrate(BayLaModel const *model, BayLaIntegratorOptions const *opts, MagStaticArena scratch)
 {
 #pragma warning(push)
     /* Complains about possible loss of precision when converting 'size' to 'f64'. Any value that would cause a problem
@@ -587,7 +587,7 @@ bayes_simple_monte_carlo_integrate(BayesModel const *model, BayesIntegratorOptio
     size max_samples = opts->simple_monte_carlo.max_samples;
     size samples_per_batch = opts->simple_monte_carlo.samples_per_batch;
     u64 seed = opts->simple_monte_carlo.seed;
-    BayesLogValue log_acceptable_abs_error = bayes_log_value_map_into_log_domain(opts->simple_monte_carlo.acceptable_abs_error);
+    BayLaLogValue log_acceptable_abs_error = bayla_log_value_map_into_log_domain(opts->simple_monte_carlo.acceptable_abs_error);
     f64 acceptable_prop_error = opts->simple_monte_carlo.acceptable_prop_error;
 
     size n_params = model->n_parameters;
@@ -602,14 +602,14 @@ bayes_simple_monte_carlo_integrate(BayesModel const *model, BayesIntegratorOptio
     {
         volume *= fabs(max_vals[i] - min_vals[i]);
     }
-    BayesLogValue log_volume = bayes_log_value_map_into_log_domain(volume);
+    BayLaLogValue log_volume = bayla_log_value_map_into_log_domain(volume);
 
     size n_samples = 0;
-    BayesLogValue log_sum = bayes_log_value_map_into_log_domain(0);
-    BayesLogValue log_sumsq = bayes_log_value_map_into_log_domain(0);
+    BayLaLogValue log_sum = bayla_log_value_map_into_log_domain(0);
+    BayLaLogValue log_sumsq = bayla_log_value_map_into_log_domain(0);
 
-    BayesLogValue log_integral = bayes_log_value_map_into_log_domain(0);
-    BayesLogValue log_integral_error = bayes_log_value_map_into_log_domain(0);
+    BayLaLogValue log_integral = bayla_log_value_map_into_log_domain(0);
+    BayLaLogValue log_integral_error = bayla_log_value_map_into_log_domain(0);
 
     f64 *params = eco_nmalloc(&scratch, n_params, f64);
     PanicIf(!params);
@@ -628,27 +628,27 @@ bayes_simple_monte_carlo_integrate(BayesModel const *model, BayesIntegratorOptio
             }
 
             /* evaluate the sum of the log prior & log likelihood */
-            BayesLogValue point_val = bayes_model_evaluate(model, params);
+            BayLaLogValue point_val = bayla_model_evaluate(model, params);
             Assert(!isnan(point_val.val));
 
             /*  update the sum & sumsq accumulators */
-            log_sum = bayes_log_value_add(log_sum, point_val);
-            log_sumsq = bayes_log_value_add(log_sumsq, bayes_log_value_power(point_val, 2.0));
+            log_sum = bayla_log_value_add(log_sum, point_val);
+            log_sumsq = bayla_log_value_add(log_sumsq, bayla_log_value_power(point_val, 2.0));
         }
 
         n_samples += samples_per_batch;
-        BayesLogValue log_n_samples = bayes_log_value_map_into_log_domain(n_samples);
+        BayLaLogValue log_n_samples = bayla_log_value_map_into_log_domain(n_samples);
 
-        BayesLogValue log_mean = bayes_log_value_divide(log_sum, log_n_samples); 
-        BayesLogValue log_sqr_mean = bayes_log_value_divide(log_sumsq, log_n_samples); 
+        BayLaLogValue log_mean = bayla_log_value_divide(log_sum, log_n_samples); 
+        BayLaLogValue log_sqr_mean = bayla_log_value_divide(log_sumsq, log_n_samples); 
 
-        BayesLogValue log_mean2 = bayes_log_value_power(log_mean, 2.0);
-        BayesLogValue log_var = bayes_log_value_divide(bayes_log_value_subtract(log_sqr_mean, log_mean2), log_n_samples);
+        BayLaLogValue log_mean2 = bayla_log_value_power(log_mean, 2.0);
+        BayLaLogValue log_var = bayla_log_value_divide(bayla_log_value_subtract(log_sqr_mean, log_mean2), log_n_samples);
 
-        log_integral_error = bayes_log_value_multiply(log_volume, bayes_log_value_power(log_var, 0.5));
-        log_integral = bayes_log_value_multiply(log_volume, log_mean);
+        log_integral_error = bayla_log_value_multiply(log_volume, bayla_log_value_power(log_var, 0.5));
+        log_integral = bayla_log_value_multiply(log_volume, log_mean);
 
-        proportional_error = bayes_log_value_map_out_of_log_domain(bayes_log_value_divide(log_integral_error, log_integral));
+        proportional_error = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(log_integral_error, log_integral));
 
         /* Stopping conditions. */
         stop = n_samples >= max_samples || 
@@ -659,9 +659,9 @@ bayes_simple_monte_carlo_integrate(BayesModel const *model, BayesIntegratorOptio
 
     b32 achieved_acceptable_error = log_integral_error.val < log_acceptable_abs_error.val || proportional_error <= acceptable_prop_error;
 
-    BayesEvidenceResult retval = {0};
-    retval.strategy = BAYES_INTEGRATE_MONTE_CARLO;
-    retval.result = (BayesValue){.value = log_integral, .error = log_integral_error };
+    BayLaEvidenceResult retval = {0};
+    retval.strategy = BAYLA_INTEGRATE_MONTE_CARLO;
+    retval.result = (BayLaValue){.value = log_integral, .error = log_integral_error };
     retval.converged = achieved_acceptable_error;
     retval.total_samples = n_samples;
 
@@ -673,13 +673,13 @@ bayes_simple_monte_carlo_integrate(BayesModel const *model, BayesIntegratorOptio
 typedef union
 {
     f64 linear_domain;
-    BayesLogValue log_domain;
-} BayesDualDomainValue;
+    BayLaLogValue log_domain;
+} BayLaDualDomainValue;
 
-_Static_assert(sizeof(BayesDualDomainValue) == sizeof(f64) && sizeof(f64) == sizeof(BayesLogValue),
+_Static_assert(sizeof(BayLaDualDomainValue) == sizeof(f64) && sizeof(f64) == sizeof(BayLaLogValue),
         "These should be wrappers for f64 (double)");
 
-struct BayesVegasMap
+struct BayLaVegasMap
 {
     /* Configuration related. */
     f64 alpha;
@@ -693,11 +693,11 @@ struct BayesVegasMap
     size *iy; 
     f64 *xs;
     f64 *delta_xs;
-    BayesDualDomainValue *ds;
+    BayLaDualDomainValue *ds;
 };
 
-static inline BayesVegasMap *
-bayes_vegas_map_create(
+API BayLaVegasMap *
+bayla_vegas_map_create(
         size ndim,
         size n_grid,
         f64 alpha,
@@ -705,7 +705,7 @@ bayes_vegas_map_create(
         f64 const *min_vals,
         MagStaticArena *perm)
 {
-    BayesVegasMap *map = eco_malloc(perm, BayesVegasMap);
+    BayLaVegasMap *map = eco_malloc(perm, BayLaVegasMap);
     
     map->ndim = ndim;
     map->n_grid = n_grid;
@@ -719,7 +719,7 @@ bayes_vegas_map_create(
     map->xs = eco_nmalloc(perm, ndim * (n_grid + 1), f64);
     map->delta_xs = eco_nmalloc(perm, ndim * (n_grid + 1), f64);
 
-    map->ds = eco_nmalloc(perm, ndim * n_grid, BayesDualDomainValue);
+    map->ds = eco_nmalloc(perm, ndim * n_grid, BayLaDualDomainValue);
 
     Assert(map->n_s && map->iy && map->xs && map->delta_xs && map->ds);
 
@@ -738,19 +738,19 @@ bayes_vegas_map_create(
     }
 
     /* Make sure these are initialized to zero so we are ready for the first iteration. */
-    for(size i = 0; i < ndim * n_grid; ++i) { map->ds[i].log_domain = bayes_log_zero; }
+    for(size i = 0; i < ndim * n_grid; ++i) { map->ds[i].log_domain = bayla_log_zero; }
     memset(map->n_s, 0, sizeof(*map->n_s) * ndim * n_grid);
 
     return map;
 }
 
-static inline void
-bayes_vegas_map_evaluate(
-        BayesModel const *model,
-        BayesVegasMap *map,
+API void
+bayla_vegas_map_evaluate(
+        BayLaModel const *model,
+        BayLaVegasMap *map,
         f64 *y,
-        BayesLogValue *out_val,
-        BayesLogValue *out_val_sq,
+        BayLaLogValue *out_val,
+        BayLaLogValue *out_val_sq,
         MagStaticArena scratch)
 {
     /* Take input y and calculate fx*jy and return that. Also accumulate necessary information in state variables for the
@@ -780,29 +780,29 @@ bayes_vegas_map_evaluate(
     }
 
     /* Calculate the log-probability. */
-    BayesLogValue log_fx = bayes_model_evaluate(model, x);
+    BayLaLogValue log_fx = bayla_model_evaluate(model, x);
     Assert(!isnan(log_fx.val));
-    BayesLogValue log_jy = bayes_log_value_map_into_log_domain(jy);
-    BayesLogValue log_jy_fx = bayes_log_value_multiply(log_fx, log_jy);
+    BayLaLogValue log_jy = bayla_log_value_map_into_log_domain(jy);
+    BayLaLogValue log_jy_fx = bayla_log_value_multiply(log_fx, log_jy);
     Assert(!isnan(log_jy_fx.val));
 
     /* Return (jy * fx) and its square */
     *out_val = log_jy_fx;
-    *out_val_sq = bayes_log_value_power(log_jy_fx, 2.0);
+    *out_val_sq = bayla_log_value_power(log_jy_fx, 2.0);
 
     /* For each dimension (D), accumulate (jy * fx)**2 in ds[D][iy], part of eq 17 */
     for(size d = 0; d < map->ndim; ++d)
     {
         map->ds[d * map->n_grid + map->iy[d]].log_domain = 
-            bayes_log_value_add(map->ds[d * map->n_grid + map->iy[d]].log_domain, *out_val_sq);
+            bayla_log_value_add(map->ds[d * map->n_grid + map->iy[d]].log_domain, *out_val_sq);
         map->n_s[d * map->n_grid + map->iy[d]]++;
     }
 }
 
 #define TINY 1.0e-100
 
-static inline void
-bayes_vegas_map_apply_sample(BayesVegasMap *map, f64 *xs_input, BayesLogValue log_prob)
+API void
+bayla_vegas_map_apply_sample(BayLaVegasMap *map, f64 *xs_input, BayLaLogValue log_prob)
 {
     size const ndim = map->ndim;
     size const n_grid = map->n_grid;
@@ -813,7 +813,7 @@ bayes_vegas_map_apply_sample(BayesVegasMap *map, f64 *xs_input, BayesLogValue lo
     size *n_s = map->n_s;
     f64 *xs = map->xs;
     f64 *delta_xs = map->delta_xs;
-    BayesLogValue *log_ds = (BayesLogValue*)map->ds;
+    BayLaLogValue *log_ds = (BayLaLogValue*)map->ds;
 
     f64 jy = 1.0;
 
@@ -846,22 +846,22 @@ bayes_vegas_map_apply_sample(BayesVegasMap *map, f64 *xs_input, BayesLogValue lo
     }
 
     /* With jy and iy use the provided fx to calculate log_fx_jy_sq and add up log_ds and n_s. */
-    BayesLogValue log_jy = bayes_log_value_map_into_log_domain(jy);
-    BayesLogValue log_jy_fx = bayes_log_value_multiply(log_prob, log_jy);
-    BayesLogValue log_fx_jy_sq = bayes_log_value_power(log_jy_fx, 2.0);
+    BayLaLogValue log_jy = bayla_log_value_map_into_log_domain(jy);
+    BayLaLogValue log_jy_fx = bayla_log_value_multiply(log_prob, log_jy);
+    BayLaLogValue log_fx_jy_sq = bayla_log_value_power(log_jy_fx, 2.0);
     Assert(!isnan(log_fx_jy_sq.val));
 
     /* For each dimension (D), accumulate (jy * fx)**2 in ds[D][iy], part of eq 17 */
     for(size d = 0; d < ndim; ++d)
     {
-        log_ds[d * n_grid + iy[d]] = bayes_log_value_add(log_ds[d * n_grid + iy[d]], log_fx_jy_sq);
+        log_ds[d * n_grid + iy[d]] = bayla_log_value_add(log_ds[d * n_grid + iy[d]], log_fx_jy_sq);
         Assert(!isnan(log_ds[d * n_grid + iy[d]].val));
         n_s[d * n_grid + iy[d]]++;
     }
 }
 
-static inline void
-bayes_vegas_map_refine(BayesVegasMap *map, MagStaticArena scratch)
+API void
+bayla_vegas_map_refine(BayLaVegasMap *map, MagStaticArena scratch)
 {
 #pragma warning(push)
 #pragma warning(disable: 4244)
@@ -874,9 +874,9 @@ bayes_vegas_map_refine(BayesVegasMap *map, MagStaticArena scratch)
     f64 *xs = map->xs;
     f64 *delta_xs = map->delta_xs;
     size *n_s = map->n_s;
-    BayesDualDomainValue *log_ds = map->ds;
+    BayLaDualDomainValue *log_ds = map->ds;
 
-    BayesLogValue const log_tiny = bayes_log_value_map_into_log_domain(TINY);
+    BayLaLogValue const log_tiny = bayla_log_value_map_into_log_domain(TINY);
 
     /* Normalize the ds, part of eq 17 */
     for(size d = 0; d < ndim; ++d)
@@ -894,7 +894,7 @@ bayes_vegas_map_refine(BayesVegasMap *map, MagStaticArena scratch)
     /* Transform into the linear domain. */
     for(size i = 0; i < ndim * n_grid; ++i)
     {
-        log_ds[i].linear_domain = bayes_log_value_map_out_of_log_domain(log_ds[i].log_domain);
+        log_ds[i].linear_domain = bayla_log_value_map_out_of_log_domain(log_ds[i].log_domain);
         Assert(!isnan(log_ds[i].linear_domain));
     }
 
@@ -975,16 +975,16 @@ bayes_vegas_map_refine(BayesVegasMap *map, MagStaticArena scratch)
     }
 
     /* Reset the accumulators for the next iteration of the grid refinement. */
-    for(size i = 0; i < ndim * n_grid; ++i) { log_ds[i].log_domain = bayes_log_zero; }
+    for(size i = 0; i < ndim * n_grid; ++i) { log_ds[i].log_domain = bayla_log_zero; }
     memset(n_s, 0, sizeof(*n_s) * ndim * n_grid);
 #pragma warning(pop)
 }
 
-static inline void 
-bayes_vegas_map_precondition(
-        BayesModel *model,
-        BayesIntegratorOptions *opts,
-        BayesParametersSamples *samples,
+API void 
+bayla_vegas_map_precondition(
+        BayLaModel *model,
+        BayLaIntegratorOptions *opts,
+        BayLaParametersSamples *samples,
         MagStaticArena *perm)
 {
     size ndim = model->n_parameters;
@@ -993,26 +993,26 @@ bayes_vegas_map_precondition(
     f64 *min_vals = model->min_parameter_vals;
     f64 *max_vals = model->max_parameter_vals;
 
-    BayesVegasMap **mapp = NULL;
+    BayLaVegasMap **mapp = NULL;
     size n_grid = 0;
     f64 alpha = 0.0;
     switch(opts->strategy)
     {
-        case BAYES_INTEGRATE_VEGAS:
+        case BAYLA_INTEGRATE_VEGAS:
         {
             n_grid = opts->vegas.num_grid_cells;
             alpha = opts->vegas.alpha;
             mapp = &opts->vegas.map;
         } break;
 
-        case BAYES_INTEGRATE_VEGAS_PLUS:
+        case BAYLA_INTEGRATE_VEGAS_PLUS:
         {
             n_grid = opts->vegas_plus.num_grid_cells;
             alpha = opts->vegas_plus.alpha;
             mapp = &opts->vegas_plus.map;
         } break;
 
-        case BAYES_INTEGRATE_VEGAS_MISER:
+        case BAYLA_INTEGRATE_VEGAS_MISER:
         {
             n_grid = opts->vegas_miser.num_grid_cells;
             alpha = opts->vegas_miser.alpha;
@@ -1022,7 +1022,7 @@ bayes_vegas_map_precondition(
         default: Panic(); /* Should never get here. */
     }
 
-    BayesVegasMap *map = bayes_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, perm);
+    BayLaVegasMap *map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, perm);
     *mapp = map; /* Ties this into options. Convoluted, I know. */
 
     f64 *delta_xs = map->delta_xs;
@@ -1035,7 +1035,7 @@ bayes_vegas_map_precondition(
     size *iy = map->iy;
     size *n_s = map->n_s;
     f64 *ds = (f64*)map->ds;
-    BayesLogValue *log_ds = (BayesLogValue*)map->ds;
+    BayLaLogValue *log_ds = (BayLaLogValue*)map->ds;
 
     Assert(iy && n_s && ds && log_ds);
 
@@ -1050,14 +1050,14 @@ bayes_vegas_map_precondition(
     {
         for(size s = 0; s < nsamples; ++s)
         {
-            BayesLogValue log_prob = samples->probs[s];
+            BayLaLogValue log_prob = samples->probs[s];
             f64 *xs_input = &samples->parameters[s * ndim];
 
-            bayes_vegas_map_apply_sample(map, xs_input, log_prob);
+            bayla_vegas_map_apply_sample(map, xs_input, log_prob);
         }
 
         memcpy(previous_delta_xs, delta_xs, sizeof(f64) * ndim * n_grid);
-        bayes_vegas_map_refine(map, scratch_);
+        bayla_vegas_map_refine(map, scratch_);
 
         /* Check early stopping conditions. */
         f64 max_delta_delta_x_ratio = -INFINITY;
@@ -1086,8 +1086,8 @@ bayes_vegas_map_precondition(
 }
 
 
-static inline size
-bayes_integer_exp(size base, u8 exp)
+API size
+bayla_integer_exp(size base, u8 exp)
 {
     size result = 1;
     while(true)
@@ -1109,19 +1109,19 @@ typedef struct
     size n_samples_per_hypercube;
     size n_total;
     size n_hypercubes;
-} BayesVegasStratificationParams;
+} BayLaVegasStratificationParams;
 
-static inline BayesVegasStratificationParams
-bayes_vegas_stratification_params_create(size const samples_per_iter, size const ndim)
+API BayLaVegasStratificationParams
+bayla_vegas_stratification_params_create(size const samples_per_iter, size const ndim)
 {
 #pragma warning(push)
     Assert(ndim < UINT8_MAX);
 #pragma warning(disable: 4244)
     size n_strat = (size)floor(pow(samples_per_iter / 2, 1.0 / ndim));
-    size n_hypercubes = bayes_integer_exp(n_strat, ndim);
+    size n_hypercubes = bayla_integer_exp(n_strat, ndim);
     size n_samples_per_hypercube = samples_per_iter / n_hypercubes;
 
-    return (BayesVegasStratificationParams)
+    return (BayLaVegasStratificationParams)
         {
             .ndim = ndim,
             .n_samples = samples_per_iter,
@@ -1133,10 +1133,10 @@ bayes_vegas_stratification_params_create(size const samples_per_iter, size const
 #pragma warning(pop)
 }
 
-static inline void
-bayes_vegas_stratification_sample_num_to_y(
+API void
+bayla_vegas_stratification_sample_num_to_y(
         size const sn, 
-        BayesVegasStratificationParams const *strat_params,
+        BayLaVegasStratificationParams const *strat_params,
         ElkRandomState *ran,
         f64 *y)
 {
@@ -1163,7 +1163,7 @@ bayes_vegas_stratification_sample_num_to_y(
         /* Convert list index to ndim dimensional coords. */
         for(size d = 0; d < strat_params->ndim; ++d)
         {
-            size factor = bayes_integer_exp(strat_params->n_strat, strat_params->ndim - d - 1);
+            size factor = bayla_integer_exp(strat_params->n_strat, strat_params->ndim - d - 1);
             size coords_of_hypercube = index / factor;
             index -= coords_of_hypercube * factor;
             f64 random = elk_random_state_uniform_f64(ran);
@@ -1174,66 +1174,66 @@ bayes_vegas_stratification_sample_num_to_y(
 #pragma warning(pop)
 }
 
-static inline void
-bayes_vegas_accumulate_results(
-        BayesEvidenceResult *retval,
+API void
+bayla_vegas_accumulate_results(
+        BayLaEvidenceResult *retval,
         size n_iter,
         size *n_samples,
-        BayesLogValue *log_integrals,
-        BayesLogValue *log_sigmas)
+        BayLaLogValue *log_integrals,
+        BayLaLogValue *log_sigmas)
 {
-    BayesLogValue log_sum_i = bayes_log_value_map_into_log_domain(0.0);
-    BayesLogValue log_sum_var_recip = bayes_log_value_map_into_log_domain(0.0);
+    BayLaLogValue log_sum_i = bayla_log_value_map_into_log_domain(0.0);
+    BayLaLogValue log_sum_var_recip = bayla_log_value_map_into_log_domain(0.0);
 
     retval->samples_used = 0;
     for(size i = n_iter - 1; i >= 0; --i)
     {
         size num_values = n_iter - i;
 
-        BayesLogValue log_sigma_sq = bayes_log_value_power(log_sigmas[i], 2.0);
-        log_sum_i = bayes_log_value_add(log_sum_i, bayes_log_value_divide(log_integrals[i], log_sigma_sq));
-        log_sum_var_recip = bayes_log_value_add(log_sum_var_recip, bayes_log_value_reciprocal(log_sigma_sq));
+        BayLaLogValue log_sigma_sq = bayla_log_value_power(log_sigmas[i], 2.0);
+        log_sum_i = bayla_log_value_add(log_sum_i, bayla_log_value_divide(log_integrals[i], log_sigma_sq));
+        log_sum_var_recip = bayla_log_value_add(log_sum_var_recip, bayla_log_value_reciprocal(log_sigma_sq));
 
-        BayesLogValue log_integral = bayes_log_value_divide(log_sum_i, log_sum_var_recip);
-        BayesLogValue log_error = bayes_log_value_reciprocal(bayes_log_value_power(log_sum_var_recip, 0.5));
+        BayLaLogValue log_integral = bayla_log_value_divide(log_sum_i, log_sum_var_recip);
+        BayLaLogValue log_error = bayla_log_value_reciprocal(bayla_log_value_power(log_sum_var_recip, 0.5));
 
-        BayesLogValue log_chi2 = bayes_log_value_map_into_log_domain(0.0);
+        BayLaLogValue log_chi2 = bayla_log_value_map_into_log_domain(0.0);
         for(size j = n_iter - 1; j >= i; --j)
         {
-            BayesLogValue log_var = bayes_log_value_power(log_sigmas[j], 2.0);
-            BayesLogValue log_integral_i = log_integrals[j];
+            BayLaLogValue log_var = bayla_log_value_power(log_sigmas[j], 2.0);
+            BayLaLogValue log_integral_i = log_integrals[j];
 
-            BayesLogValue temp;
+            BayLaLogValue temp;
             if(log_integral_i.val > log_integral.val)
             {
-                temp = bayes_log_value_power(bayes_log_value_subtract(log_integral_i, log_integral), 2.0);
+                temp = bayla_log_value_power(bayla_log_value_subtract(log_integral_i, log_integral), 2.0);
             }
             else
             {
-                temp = bayes_log_value_power(bayes_log_value_subtract(log_integral, log_integral_i), 2.0);
+                temp = bayla_log_value_power(bayla_log_value_subtract(log_integral, log_integral_i), 2.0);
             }
 
-            temp = bayes_log_value_divide(temp, log_var);
-            log_chi2 = bayes_log_value_add(log_chi2, temp);
+            temp = bayla_log_value_divide(temp, log_var);
+            log_chi2 = bayla_log_value_add(log_chi2, temp);
             Assert(!isnan(log_chi2.val));
         }
 
-        f64 chi2 = bayes_log_value_map_out_of_log_domain(log_chi2);
+        f64 chi2 = bayla_log_value_map_out_of_log_domain(log_chi2);
 
         if(chi2 > num_values && num_values > 1) { break; }
 
-        retval->result = (BayesValue){.value = log_integral, .error = log_error};
+        retval->result = (BayLaValue){.value = log_integral, .error = log_error};
         retval->chisq = chi2;
         
         switch(retval->strategy)
         {
-        case BAYES_INTEGRATE_VEGAS:
+        case BAYLA_INTEGRATE_VEGAS:
             {
                 retval->samples_used += *n_samples;
             } break;
 
-        case BAYES_INTEGRATE_VEGAS_MISER:
-        case BAYES_INTEGRATE_VEGAS_PLUS:
+        case BAYLA_INTEGRATE_VEGAS_MISER:
+        case BAYLA_INTEGRATE_VEGAS_PLUS:
             {
                 retval->samples_used += n_samples[i];
             } break;
@@ -1246,12 +1246,12 @@ bayes_vegas_accumulate_results(
     
     switch(retval->strategy)
     {
-    case BAYES_INTEGRATE_VEGAS:
+    case BAYLA_INTEGRATE_VEGAS:
         {
             retval->total_samples = n_samples[0] * n_iter; 
         } break;
 
-    case BAYES_INTEGRATE_VEGAS_PLUS:
+    case BAYLA_INTEGRATE_VEGAS_PLUS:
         {
             retval->total_samples = 0;
             for(size i = 0; i < n_iter; ++i)
@@ -1260,7 +1260,7 @@ bayes_vegas_accumulate_results(
             }
         } break;
 
-    case BAYES_INTEGRATE_VEGAS_MISER: {} break;
+    case BAYLA_INTEGRATE_VEGAS_MISER: {} break;
 
     default: Panic();
     }
@@ -1268,20 +1268,20 @@ bayes_vegas_accumulate_results(
     Assert(retval->total_samples >= retval->samples_used);
 }
 
-static inline BayesEvidenceResult
-bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, MagStaticArena scratch_)
+API BayLaEvidenceResult
+bayla_vegas_integrate(BayLaModel const *model, BayLaIntegratorOptions *opts, MagStaticArena scratch_)
 {
 #pragma warning(push)
     /* Complains about conversion of samples_per_refinement and n_grid to f64. */
     Assert(opts->vegas.samples_per_refinement < 9007199254740992 && opts->vegas.num_grid_cells < 9007199254740992);
 #pragma warning(disable: 4244)
     size samples_per_refinement = opts->vegas.samples_per_refinement;
-    BayesLogValue log_samples = bayes_log_value_map_into_log_domain(samples_per_refinement);
+    BayLaLogValue log_samples = bayla_log_value_map_into_log_domain(samples_per_refinement);
     size n_grid = opts->vegas.num_grid_cells;
     size max_total_samples = opts->vegas.max_total_samples;
     size min_total_samples = opts->vegas.min_total_samples;
-    BayesLogValue acceptable_abs_error = bayes_log_value_map_into_log_domain(opts->vegas.acceptable_abs_error);
-    BayesLogValue acceptable_prop_error = bayes_log_value_map_into_log_domain(opts->vegas.acceptable_prop_error);
+    BayLaLogValue acceptable_abs_error = bayla_log_value_map_into_log_domain(opts->vegas.acceptable_abs_error);
+    BayLaLogValue acceptable_prop_error = bayla_log_value_map_into_log_domain(opts->vegas.acceptable_prop_error);
     f64 alpha = opts->vegas.alpha;
 
     u64 seed = opts->vegas.seed;
@@ -1293,33 +1293,33 @@ bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
     ElkRandomState random_state_ = elk_random_state_create(seed);
     ElkRandomState *ran = &random_state_;
 
-    BayesEvidenceResult retval = {.strategy = BAYES_INTEGRATE_VEGAS, .converged = true};
+    BayLaEvidenceResult retval = {.strategy = BAYLA_INTEGRATE_VEGAS, .converged = true};
 
     /* Allocate some workspace memory. */
     MagStaticArena *scratch = &scratch_;
-    BayesLogValue *log_integral = eco_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayesLogValue);
-    BayesLogValue *log_sigma = eco_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayesLogValue);
+    BayLaLogValue *log_integral = eco_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayLaLogValue);
+    BayLaLogValue *log_sigma = eco_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayLaLogValue);
 
     f64 *x = eco_nmalloc(scratch, ndim, f64);
     f64 *y = eco_nmalloc(scratch, ndim, f64);
 
-    BayesLogValue *log_fx_jys = eco_nmalloc(scratch, samples_per_refinement, BayesLogValue);
-    BayesLogValue *log_fx_jy_sqs = eco_nmalloc(scratch, samples_per_refinement, BayesLogValue);
+    BayLaLogValue *log_fx_jys = eco_nmalloc(scratch, samples_per_refinement, BayLaLogValue);
+    BayLaLogValue *log_fx_jy_sqs = eco_nmalloc(scratch, samples_per_refinement, BayLaLogValue);
 
     PanicIf(!(x && y && log_fx_jys && log_fx_jy_sqs));
 
-    BayesVegasMap *map = NULL;
+    BayLaVegasMap *map = NULL;
     if(opts->vegas.map)
     {
         map = opts->vegas.map;
     }
     else
     {
-       map = bayes_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, scratch);
+       map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, scratch);
     }
 
     /* Calculate quantities used repeatedly in implementing the stratified sampling. */
-    BayesVegasStratificationParams strat_params = bayes_vegas_stratification_params_create(samples_per_refinement, ndim);
+    BayLaVegasStratificationParams strat_params = bayla_vegas_stratification_params_create(samples_per_refinement, ndim);
 
     /* Iterate over several batches to refine the grid. */
     size iter = 0;
@@ -1331,20 +1331,20 @@ bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
              * 
              * Stratification for stratified sampling happens in here. 
              */
-            bayes_vegas_stratification_sample_num_to_y(s, &strat_params, ran, y);
+            bayla_vegas_stratification_sample_num_to_y(s, &strat_params, ran, y);
 
             /* Evaluate the function and accumulate (jy * fx) and its square */
-            bayes_vegas_map_evaluate(model, map, y, &log_fx_jys[s], &log_fx_jy_sqs[s], scratch_);
+            bayla_vegas_map_evaluate(model, map, y, &log_fx_jys[s], &log_fx_jy_sqs[s], scratch_);
         }
 
-        BayesLogValue log_sum = bayes_log_values_sum(samples_per_refinement, log_fx_jys);
-        log_integral[iter] = bayes_log_value_divide(log_sum, log_samples);
+        BayLaLogValue log_sum = bayla_log_values_sum(samples_per_refinement, log_fx_jys);
+        log_integral[iter] = bayla_log_value_divide(log_sum, log_samples);
 
-        BayesLogValue log_sum_sq = bayes_log_values_sum(samples_per_refinement, log_fx_jy_sqs);
-        BayesLogValue log_mean_sq = bayes_log_value_divide(log_sum_sq, log_samples);
-        BayesLogValue log_var = bayes_log_value_subtract(log_mean_sq, bayes_log_value_power(log_integral[iter], 2.0));
-        log_var = bayes_log_value_divide(log_var, bayes_log_value_map_into_log_domain(samples_per_refinement - 1));
-        log_sigma[iter] = bayes_log_value_power(log_var, 0.5);
+        BayLaLogValue log_sum_sq = bayla_log_values_sum(samples_per_refinement, log_fx_jy_sqs);
+        BayLaLogValue log_mean_sq = bayla_log_value_divide(log_sum_sq, log_samples);
+        BayLaLogValue log_var = bayla_log_value_subtract(log_mean_sq, bayla_log_value_power(log_integral[iter], 2.0));
+        log_var = bayla_log_value_divide(log_var, bayla_log_value_map_into_log_domain(samples_per_refinement - 1));
+        log_sigma[iter] = bayla_log_value_power(log_var, 0.5);
 
         /* At this point, we've finished an iteration of the integral, we haven't refined the grid yet, so do that if
          * needed before going back through the loop!
@@ -1352,7 +1352,7 @@ bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
         iter++;
 
         /* Update the integral values and error metrics. */
-        bayes_vegas_accumulate_results(&retval, iter, &samples_per_refinement, log_integral, log_sigma);
+        bayla_vegas_accumulate_results(&retval, iter, &samples_per_refinement, log_integral, log_sigma);
 
         /* Check for stopping conditions */
         if(retval.samples_used > min_total_samples)
@@ -1361,7 +1361,7 @@ bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
             {
                 break;
             }
-            else if(!isnan(acceptable_prop_error.val) && bayes_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val)
+            else if(!isnan(acceptable_prop_error.val) && bayla_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val)
             {
                 break;
             }
@@ -1374,7 +1374,7 @@ bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
             break;
         }
 
-        bayes_vegas_map_refine(map, scratch_);
+        bayla_vegas_map_refine(map, scratch_);
     } /* iter */
 
     return retval;
@@ -1384,9 +1384,9 @@ bayes_vegas_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
 typedef struct
 {
     size n_cube_samples;
-    BayesLogValue log_jf_sum;
-    BayesLogValue log_jf_sq_sum;
-} BayesHyperCube;
+    BayLaLogValue log_jf_sum;
+    BayLaLogValue log_jf_sq_sum;
+} BayLaHyperCube;
 
 typedef struct
 {
@@ -1395,11 +1395,11 @@ typedef struct
     size n_hypercubes;
     size n_samples_per_iter;
     f64 hypercube_volume;
-    BayesHyperCube *cubes;
-} BayesVegasPlusStratificationParams;
+    BayLaHyperCube *cubes;
+} BayLaVegasPlusStratificationParams;
 
-static inline BayesVegasPlusStratificationParams
-bayes_vegas_plus_stratification_params_create(size const samples_per_iter, size const ndim, MagStaticArena *perm)
+API BayLaVegasPlusStratificationParams
+bayla_vegas_plus_stratification_params_create(size const samples_per_iter, size const ndim, MagStaticArena *perm)
 {
 #pragma warning(push)
     /* Complains about possible loss of precision when converting 'size' to 'f64'. Any value that would cause a problem
@@ -1407,18 +1407,18 @@ bayes_vegas_plus_stratification_params_create(size const samples_per_iter, size 
      */
 #pragma warning(disable:4244)
     size n_strat = (size)floor(pow(samples_per_iter / 4, 1.0 / ndim)); if(n_strat < 1) { n_strat = 1; }
-    size n_hypercubes = bayes_integer_exp(n_strat, ndim);
+    size n_hypercubes = bayla_integer_exp(n_strat, ndim);
     f64 hypercube_volume = 1.0 / n_hypercubes;
 
     size n_samples_per_hypercube = samples_per_iter / n_hypercubes;
 
-    BayesHyperCube *cubes = eco_nmalloc(perm, n_hypercubes, BayesHyperCube);
+    BayLaHyperCube *cubes = eco_nmalloc(perm, n_hypercubes, BayLaHyperCube);
     for(size h = 0; h < n_hypercubes; ++h)
     {
-        cubes[h] = (BayesHyperCube){ .n_cube_samples = n_samples_per_hypercube }; /*Leave accumulators zero initialized.*/
+        cubes[h] = (BayLaHyperCube){ .n_cube_samples = n_samples_per_hypercube }; /*Leave accumulators zero initialized.*/
     }
 
-    return (BayesVegasPlusStratificationParams)
+    return (BayLaVegasPlusStratificationParams)
         {
             .ndim = ndim,
             .n_strat = n_strat,
@@ -1430,10 +1430,10 @@ bayes_vegas_plus_stratification_params_create(size const samples_per_iter, size 
 #pragma warning(pop)
 }
 
-static inline void
-bayes_vegas_plus_stratification_cube_num_to_y(
+API void
+bayla_vegas_plus_stratification_cube_num_to_y(
         size const hn, 
-        BayesVegasPlusStratificationParams const *strat_params,
+        BayLaVegasPlusStratificationParams const *strat_params,
         ElkRandomState *ran,
         f64 *y)
 {
@@ -1448,7 +1448,7 @@ bayes_vegas_plus_stratification_cube_num_to_y(
     /* Convert list index to ndim dimensional coords. */
     for(size d = 0; d < strat_params->ndim; ++d)
     {
-        size factor = bayes_integer_exp(strat_params->n_strat, strat_params->ndim - d - 1);
+        size factor = bayla_integer_exp(strat_params->n_strat, strat_params->ndim - d - 1);
         size coords_of_hypercube = index / factor;
         index -= coords_of_hypercube * factor;
         f64 random = elk_random_state_uniform_f64(ran);
@@ -1459,11 +1459,11 @@ bayes_vegas_plus_stratification_cube_num_to_y(
 #pragma warning(pop)
 }
 
-static inline void
-bayes_vegas_plus_accumulate_hypercube_integrals(
-        BayesVegasPlusStratificationParams *strat_params, 
-        BayesLogValue *log_integral, 
-        BayesLogValue *log_sigma,
+API void
+bayla_vegas_plus_accumulate_hypercube_integrals(
+        BayLaVegasPlusStratificationParams *strat_params, 
+        BayLaLogValue *log_integral, 
+        BayLaLogValue *log_sigma,
         size *iteration_samples)
 {
 #pragma warning(push)
@@ -1471,47 +1471,47 @@ bayes_vegas_plus_accumulate_hypercube_integrals(
      * is unrealistically large and would crash the computer due to a lack of memory anyway.
      */
 #pragma warning(disable:4244)
-    BayesLogValue log_sigma_sq_acc = bayes_log_value_map_into_log_domain(0.0);
-    BayesLogValue log_integral_acc = bayes_log_value_map_into_log_domain(0.0);
+    BayLaLogValue log_sigma_sq_acc = bayla_log_value_map_into_log_domain(0.0);
+    BayLaLogValue log_integral_acc = bayla_log_value_map_into_log_domain(0.0);
     *iteration_samples = 0;
 
     for(size h = 0; h < strat_params->n_hypercubes; ++h)
     {
-        BayesHyperCube *cube = &strat_params->cubes[h];
+        BayLaHyperCube *cube = &strat_params->cubes[h];
 
-        BayesLogValue log_cube_n_samples = bayes_log_value_map_into_log_domain(cube->n_cube_samples);
-        BayesLogValue log_cube_integral = bayes_log_value_divide(cube->log_jf_sum, log_cube_n_samples);
+        BayLaLogValue log_cube_n_samples = bayla_log_value_map_into_log_domain(cube->n_cube_samples);
+        BayLaLogValue log_cube_integral = bayla_log_value_divide(cube->log_jf_sum, log_cube_n_samples);
 
-        BayesLogValue log_mean_sq = bayes_log_value_divide(cube->log_jf_sq_sum, log_cube_n_samples);
-        BayesLogValue log_sqrd_mean = bayes_log_value_power(log_cube_integral, 2.0);
-        BayesLogValue log_cube_var;
+        BayLaLogValue log_mean_sq = bayla_log_value_divide(cube->log_jf_sq_sum, log_cube_n_samples);
+        BayLaLogValue log_sqrd_mean = bayla_log_value_power(log_cube_integral, 2.0);
+        BayLaLogValue log_cube_var;
         if(log_mean_sq.val >= log_sqrd_mean.val)
         {
-            log_cube_var = bayes_log_value_subtract(log_mean_sq, log_sqrd_mean);
-            log_cube_var = bayes_log_value_divide(log_cube_var, log_cube_n_samples);
+            log_cube_var = bayla_log_value_subtract(log_mean_sq, log_sqrd_mean);
+            log_cube_var = bayla_log_value_divide(log_cube_var, log_cube_n_samples);
         }
         else
         {
-            log_cube_var = bayes_log_value_map_into_log_domain(0.0);
+            log_cube_var = bayla_log_value_map_into_log_domain(0.0);
         }
         Assert(!isnan(log_cube_var.val));
 
-        log_integral_acc = bayes_log_value_add(log_integral_acc, log_cube_integral);
-        log_sigma_sq_acc = bayes_log_value_add(log_sigma_sq_acc, bayes_log_value_divide(log_cube_var, log_cube_n_samples));
+        log_integral_acc = bayla_log_value_add(log_integral_acc, log_cube_integral);
+        log_sigma_sq_acc = bayla_log_value_add(log_sigma_sq_acc, bayla_log_value_divide(log_cube_var, log_cube_n_samples));
         *iteration_samples += cube->n_cube_samples;
     }
 
-    *log_integral = bayes_log_value_divide(log_integral_acc, bayes_log_value_map_into_log_domain(strat_params->n_hypercubes));
-    *log_sigma = bayes_log_value_multiply(
-            bayes_log_value_power(log_sigma_sq_acc, 0.5),
-            bayes_log_value_map_into_log_domain(strat_params->hypercube_volume));
+    *log_integral = bayla_log_value_divide(log_integral_acc, bayla_log_value_map_into_log_domain(strat_params->n_hypercubes));
+    *log_sigma = bayla_log_value_multiply(
+            bayla_log_value_power(log_sigma_sq_acc, 0.5),
+            bayla_log_value_map_into_log_domain(strat_params->hypercube_volume));
 
 #pragma warning(pop)
 }
 
-static inline void
-bayes_vegas_plus_refine_sampling_stratification(
-        BayesVegasPlusStratificationParams *strat_params, 
+API void
+bayla_vegas_plus_refine_sampling_stratification(
+        BayLaVegasPlusStratificationParams *strat_params, 
         f64 beta, 
         MagStaticArena scratch)
 {
@@ -1522,48 +1522,48 @@ bayes_vegas_plus_refine_sampling_stratification(
 #pragma warning(disable:4244)
     size n_hypercubes = strat_params->n_hypercubes;
 
-    BayesDualDomainValue *ds = eco_nmalloc(&scratch, n_hypercubes, BayesDualDomainValue);
+    BayLaDualDomainValue *ds = eco_nmalloc(&scratch, n_hypercubes, BayLaDualDomainValue);
 
     for(size h = 0; h < n_hypercubes; ++h)
     {
-        BayesHyperCube *cube = &strat_params->cubes[h];
+        BayLaHyperCube *cube = &strat_params->cubes[h];
 
 
-        BayesLogValue log_cube_n_samples = bayes_log_value_map_into_log_domain(cube->n_cube_samples);
-        BayesLogValue log_cube_integral = bayes_log_value_divide(cube->log_jf_sum, log_cube_n_samples);
+        BayLaLogValue log_cube_n_samples = bayla_log_value_map_into_log_domain(cube->n_cube_samples);
+        BayLaLogValue log_cube_integral = bayla_log_value_divide(cube->log_jf_sum, log_cube_n_samples);
 
-        BayesLogValue log_mean_sq = bayes_log_value_divide(cube->log_jf_sq_sum, log_cube_n_samples);
-        BayesLogValue log_sqrd_mean = bayes_log_value_power(log_cube_integral, 2.0);
-        BayesLogValue log_cube_var;
+        BayLaLogValue log_mean_sq = bayla_log_value_divide(cube->log_jf_sq_sum, log_cube_n_samples);
+        BayLaLogValue log_sqrd_mean = bayla_log_value_power(log_cube_integral, 2.0);
+        BayLaLogValue log_cube_var;
         if(log_mean_sq.val >= log_sqrd_mean.val)
         {
-            log_cube_var = bayes_log_value_subtract(log_mean_sq, log_sqrd_mean);
-            log_cube_var = bayes_log_value_divide(log_cube_var, bayes_log_value_map_into_log_domain(cube->n_cube_samples - 1));
+            log_cube_var = bayla_log_value_subtract(log_mean_sq, log_sqrd_mean);
+            log_cube_var = bayla_log_value_divide(log_cube_var, bayla_log_value_map_into_log_domain(cube->n_cube_samples - 1));
         }
         else
         {
-            log_cube_var = bayes_log_value_map_into_log_domain(0.0);
+            log_cube_var = bayla_log_value_map_into_log_domain(0.0);
         }
         Assert(!isnan(log_cube_var.val));
 
-        BayesLogValue log_cube_sigma = bayes_log_value_power(
-                bayes_log_value_multiply(
-                    log_cube_var, bayes_log_value_map_into_log_domain(strat_params->hypercube_volume)),
+        BayLaLogValue log_cube_sigma = bayla_log_value_power(
+                bayla_log_value_multiply(
+                    log_cube_var, bayla_log_value_map_into_log_domain(strat_params->hypercube_volume)),
                 0.5);
 
-        ds[h].log_domain = bayes_log_value_power(log_cube_sigma, beta);
+        ds[h].log_domain = bayla_log_value_power(log_cube_sigma, beta);
         if(ds[h].log_domain.val < log(TINY) || isnan(ds[h].log_domain.val)) { ds[h].log_domain.val = log(TINY); }
 
         Assert(!isnan(ds[h].log_domain.val));
     }
 
-    BayesLogValue log_sum_ds = bayes_log_values_sum(n_hypercubes, (BayesLogValue *)ds);
+    BayLaLogValue log_sum_ds = bayla_log_values_sum(n_hypercubes, (BayLaLogValue *)ds);
     Assert(!isnan(log_sum_ds.val));
 
     for(size h = 0; h < n_hypercubes; ++h)
     {
-        ds[h].log_domain = bayes_log_value_divide(ds[h].log_domain, log_sum_ds);
-        ds[h].linear_domain = bayes_log_value_map_out_of_log_domain(ds[h].log_domain);
+        ds[h].log_domain = bayla_log_value_divide(ds[h].log_domain, log_sum_ds);
+        ds[h].linear_domain = bayla_log_value_map_out_of_log_domain(ds[h].log_domain);
         Assert(ds[h].linear_domain >= 0.0 && ds[h].linear_domain <= 1.0);
     }
 
@@ -1576,8 +1576,8 @@ bayes_vegas_plus_refine_sampling_stratification(
 }
 
 
-static inline BayesEvidenceResult
-bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts, MagStaticArena scratch_)
+API BayLaEvidenceResult
+bayla_vegas_plus_integrate(BayLaModel const *model, BayLaIntegratorOptions *opts, MagStaticArena scratch_)
 {
 #pragma warning(push)
     /* Complains about possible loss of precision when converting 'size' to 'f64'. Any value that would cause a problem
@@ -1588,8 +1588,8 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
     size n_grid = opts->vegas_plus.num_grid_cells;
     size max_total_samples = opts->vegas_plus.max_total_samples;
     size min_total_samples = opts->vegas_plus.min_total_samples;
-    BayesLogValue acceptable_abs_error = bayes_log_value_map_into_log_domain(opts->vegas_plus.acceptable_abs_error);
-    BayesLogValue acceptable_prop_error = bayes_log_value_map_into_log_domain(opts->vegas_plus.acceptable_prop_error);
+    BayLaLogValue acceptable_abs_error = bayla_log_value_map_into_log_domain(opts->vegas_plus.acceptable_abs_error);
+    BayLaLogValue acceptable_prop_error = bayla_log_value_map_into_log_domain(opts->vegas_plus.acceptable_prop_error);
     f64 alpha = opts->vegas_plus.alpha;
     f64 beta = opts->vegas_plus.beta;
 
@@ -1602,14 +1602,14 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
     ElkRandomState random_state_ = elk_random_state_create(seed);
     ElkRandomState *ran = &random_state_;
 
-    BayesEvidenceResult retval = {.strategy = BAYES_INTEGRATE_VEGAS_PLUS, .converged = true};
+    BayLaEvidenceResult retval = {.strategy = BAYLA_INTEGRATE_VEGAS_PLUS, .converged = true};
 
     size max_iterations = max_total_samples / samples_per_refinement * 2; /* Give some extra space here. */
 
     /* Allocate some workspace memory. */
     MagStaticArena *scratch = &scratch_;
-    BayesLogValue *log_integral = eco_nmalloc(scratch, max_iterations, BayesLogValue);
-    BayesLogValue *log_sigma = eco_nmalloc(scratch, max_iterations, BayesLogValue);
+    BayLaLogValue *log_integral = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
+    BayLaLogValue *log_sigma = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
     size *samples_per_iter = eco_nmalloc(scratch, max_iterations, size);
     PakArrayLedger iter_ledger = pak_array_ledger_create(max_iterations);
 
@@ -1618,19 +1618,19 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
 
     PanicIf(!(x && y));
 
-    BayesVegasMap *map = NULL;
+    BayLaVegasMap *map = NULL;
     if(opts->vegas_plus.map)
     {
         map = opts->vegas_plus.map;
     }
     else
     {
-       map = bayes_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, scratch);
+       map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, scratch);
     }
 
     /* Calculate quantities used repeatedly in implementing the stratified sampling. */
-    BayesVegasPlusStratificationParams strat_params =
-        bayes_vegas_plus_stratification_params_create(samples_per_refinement, ndim, scratch);
+    BayLaVegasPlusStratificationParams strat_params =
+        bayla_vegas_plus_stratification_params_create(samples_per_refinement, ndim, scratch);
 
     /* Iterate over several batches to refine the grid. */
     size iter = 0;
@@ -1638,8 +1638,8 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
     {
         for(size h = 0; h < strat_params.n_hypercubes; ++h)
         {
-            strat_params.cubes[h].log_jf_sum = bayes_log_zero;
-            strat_params.cubes[h].log_jf_sq_sum = bayes_log_zero;
+            strat_params.cubes[h].log_jf_sum = bayla_log_zero;
+            strat_params.cubes[h].log_jf_sq_sum = bayla_log_zero;
 
             for(size s = 0; s < strat_params.cubes[h].n_cube_samples; ++s)
             {
@@ -1647,21 +1647,21 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
                  * 
                  * Stratification for stratified sampling happens in here. 
                  */
-                bayes_vegas_plus_stratification_cube_num_to_y(h, &strat_params, ran, y);
+                bayla_vegas_plus_stratification_cube_num_to_y(h, &strat_params, ran, y);
 
-                BayesLogValue log_jf;
-                BayesLogValue log_jf_sq;
+                BayLaLogValue log_jf;
+                BayLaLogValue log_jf_sq;
 
                 /* Evaluate the function and accumulate (jy * fx) and its square */
-                bayes_vegas_map_evaluate(model, map, y, &log_jf, &log_jf_sq, scratch_);
+                bayla_vegas_map_evaluate(model, map, y, &log_jf, &log_jf_sq, scratch_);
 
-                strat_params.cubes[h].log_jf_sum = bayes_log_value_add(strat_params.cubes[h].log_jf_sum, log_jf);
-                strat_params.cubes[h].log_jf_sq_sum = bayes_log_value_add(strat_params.cubes[h].log_jf_sq_sum, log_jf_sq);
+                strat_params.cubes[h].log_jf_sum = bayla_log_value_add(strat_params.cubes[h].log_jf_sum, log_jf);
+                strat_params.cubes[h].log_jf_sq_sum = bayla_log_value_add(strat_params.cubes[h].log_jf_sq_sum, log_jf_sq);
             }
         }
 
         size iter_idx = pak_array_ledger_push_back_index(&iter_ledger);
-        bayes_vegas_plus_accumulate_hypercube_integrals(
+        bayla_vegas_plus_accumulate_hypercube_integrals(
                 &strat_params, 
                 &log_integral[iter_idx], 
                 &log_sigma[iter_idx], 
@@ -1672,7 +1672,7 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
          */
         iter++;
 
-        bayes_vegas_accumulate_results(&retval, iter, samples_per_iter, log_integral, log_sigma);
+        bayla_vegas_accumulate_results(&retval, iter, samples_per_iter, log_integral, log_sigma);
 
         /* Check for stopping conditions */
         if(retval.samples_used > min_total_samples)
@@ -1681,7 +1681,7 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
             {
                 break;
             }
-            else if(!isnan(acceptable_prop_error.val) && bayes_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val)
+            else if(!isnan(acceptable_prop_error.val) && bayla_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val)
             {
                 break;
             }
@@ -1694,8 +1694,8 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
             break;
         }
 
-        bayes_vegas_map_refine(map, scratch_);
-        bayes_vegas_plus_refine_sampling_stratification(&strat_params, beta, scratch_);
+        bayla_vegas_map_refine(map, scratch_);
+        bayla_vegas_plus_refine_sampling_stratification(&strat_params, beta, scratch_);
 
     } /* iter */
 
@@ -1705,32 +1705,32 @@ bayes_vegas_plus_integrate(BayesModel const *model, BayesIntegratorOptions *opts
 
 typedef struct
 {
-    BayesModel const *model;
+    BayLaModel const *model;
     size ndim;
-    BayesVegasMap *map;
-} BayesMiserInnerFunctionArgs;
+    BayLaVegasMap *map;
+} BayLaMiserInnerFunctionArgs;
 
-static inline BayesLogValue
-bayes_miser_inner_function_evaluate(BayesMiserInnerFunctionArgs args, f64 *ys, MagStaticArena scratch)
+API BayLaLogValue
+bayla_miser_inner_function_evaluate(BayLaMiserInnerFunctionArgs args, f64 *ys, MagStaticArena scratch)
 {
     if(args.map)
     {
-        BayesLogValue point_val = {0};
-        BayesLogValue p2 = {0};
+        BayLaLogValue point_val = {0};
+        BayLaLogValue p2 = {0};
 
-        bayes_vegas_map_evaluate(args.model, args.map, ys, &point_val, &p2, scratch);
+        bayla_vegas_map_evaluate(args.model, args.map, ys, &point_val, &p2, scratch);
 
         return point_val;
     }
     else
     {
-        return bayes_model_evaluate(args.model, ys);
+        return bayla_model_evaluate(args.model, ys);
     }
 }
 
-static inline BayesValue
-bayes_miser_integrate_inner(
-        BayesMiserInnerFunctionArgs args,
+API BayLaValue
+bayla_miser_integrate_inner(
+        BayLaMiserInnerFunctionArgs args,
         f64 const *min_xs,
         f64 const *max_xs,
         size const npts,
@@ -1748,7 +1748,7 @@ bayes_miser_integrate_inner(
      */
 #pragma warning(disable:4244)
 
-    BayesLogValue const log_tiny = bayes_log_value_map_into_log_domain(TINY);
+    BayLaLogValue const log_tiny = bayla_log_value_map_into_log_domain(TINY);
     size ndim = args.ndim;
 
     f64 *lengths = eco_nmalloc(&scratch, ndim, f64);
@@ -1763,8 +1763,8 @@ bayes_miser_integrate_inner(
 
         f64 *xs = eco_nmalloc(&scratch, ndim, f64);
 
-        BayesLogValue log_sum = bayes_log_value_map_into_log_domain(0);
-        BayesLogValue log_sumsq = bayes_log_value_map_into_log_domain(0);
+        BayLaLogValue log_sum = bayla_log_value_map_into_log_domain(0);
+        BayLaLogValue log_sumsq = bayla_log_value_map_into_log_domain(0);
 
         for(size i = 0; i < npts; ++i)
         {
@@ -1775,38 +1775,38 @@ bayes_miser_integrate_inner(
             }
 
             /* Evaluate the function value. */
-            BayesLogValue point_val = bayes_miser_inner_function_evaluate(args, xs, scratch);
+            BayLaLogValue point_val = bayla_miser_inner_function_evaluate(args, xs, scratch);
             Assert(!isnan(point_val.val));
 
             /*  update the sum & sumsq accumulators */
-            log_sum = bayes_log_value_add(log_sum, point_val);
-            log_sumsq = bayes_log_value_add(log_sumsq, bayes_log_value_power(point_val, 2.0));
+            log_sum = bayla_log_value_add(log_sum, point_val);
+            log_sumsq = bayla_log_value_add(log_sumsq, bayla_log_value_power(point_val, 2.0));
         }
 
         *n_samples += npts;
         *samples_used += npts;
 
-        BayesLogValue log_npts = bayes_log_value_map_into_log_domain(npts);
-        BayesLogValue log_nptsm1 = bayes_log_value_map_into_log_domain(npts - 1);
+        BayLaLogValue log_npts = bayla_log_value_map_into_log_domain(npts);
+        BayLaLogValue log_nptsm1 = bayla_log_value_map_into_log_domain(npts - 1);
 
-        BayesLogValue log_mean = bayes_log_value_divide(log_sum, log_npts); 
-        BayesLogValue log_sqr_mean = bayes_log_value_divide(log_sumsq, log_npts); 
+        BayLaLogValue log_mean = bayla_log_value_divide(log_sum, log_npts); 
+        BayLaLogValue log_sqr_mean = bayla_log_value_divide(log_sumsq, log_npts); 
 
-        BayesLogValue log_mean2 = bayes_log_value_power(log_mean, 2.0);
-        BayesLogValue log_var = bayes_log_value_divide(bayes_log_value_subtract(log_sqr_mean, log_mean2), log_nptsm1);
+        BayLaLogValue log_mean2 = bayla_log_value_power(log_mean, 2.0);
+        BayLaLogValue log_var = bayla_log_value_divide(bayla_log_value_subtract(log_sqr_mean, log_mean2), log_nptsm1);
         if(isnan(log_var.val)) log_var = log_tiny;
 
-        return (BayesValue){ .value = log_mean, .error = log_var };
+        return (BayLaValue){ .value = log_mean, .error = log_var };
     }
     else
     {
         /* Do some preliminary uniform sampling to decide how to bifurcate this domain. */
         f64 *xs = eco_nmalloc(&scratch, ndim, f64);
         f64 *x_mids = eco_nmalloc(&scratch, ndim, f64);
-        BayesLogValue *fmaxl = eco_nmalloc(&scratch, ndim, BayesLogValue);
-        BayesLogValue *fmaxr = eco_nmalloc(&scratch, ndim, BayesLogValue);
-        BayesLogValue *fminl = eco_nmalloc(&scratch, ndim, BayesLogValue);
-        BayesLogValue *fminr = eco_nmalloc(&scratch, ndim, BayesLogValue);
+        BayLaLogValue *fmaxl = eco_nmalloc(&scratch, ndim, BayLaLogValue);
+        BayLaLogValue *fmaxr = eco_nmalloc(&scratch, ndim, BayLaLogValue);
+        BayLaLogValue *fminl = eco_nmalloc(&scratch, ndim, BayLaLogValue);
+        BayLaLogValue *fminr = eco_nmalloc(&scratch, ndim, BayLaLogValue);
         f64 *max_xs_l = eco_nmalloc(&scratch, ndim, f64);
         f64 *min_xs_r = eco_nmalloc(&scratch, ndim, f64);
 
@@ -1833,7 +1833,7 @@ bayes_miser_integrate_inner(
             }
 
             /* Evaluate the function value. */
-            BayesLogValue point_val = bayes_miser_inner_function_evaluate(args, xs, scratch);
+            BayLaLogValue point_val = bayla_miser_inner_function_evaluate(args, xs, scratch);
             Assert(!isnan(point_val.val));
 
             for(size d = 0; d < ndim; ++d)
@@ -1853,20 +1853,20 @@ bayes_miser_integrate_inner(
 
         /* Choose which dimension to bisect. */
         size db = -1;
-        BayesLogValue sumb = {.val = INFINITY};
-        BayesLogValue siglb = bayes_log_one;
-        BayesLogValue sigrb = bayes_log_one;
+        BayLaLogValue sumb = {.val = INFINITY};
+        BayLaLogValue siglb = bayla_log_one;
+        BayLaLogValue sigrb = bayla_log_one;
         for(size d = 0; d < ndim; ++d)
         {
             if(fmaxl[d].val > fminl[d].val && fmaxr[d].val > fminr[d].val)
             {
-                BayesLogValue lval = bayes_log_value_power(bayes_log_value_subtract(fmaxl[d], fminl[d]), 2.0/3.0);
-                BayesLogValue sigl = log_tiny.val > lval.val ? log_tiny : lval;
+                BayLaLogValue lval = bayla_log_value_power(bayla_log_value_subtract(fmaxl[d], fminl[d]), 2.0/3.0);
+                BayLaLogValue sigl = log_tiny.val > lval.val ? log_tiny : lval;
 
-                BayesLogValue rval = bayes_log_value_power(bayes_log_value_subtract(fmaxr[d], fminr[d]), 2.0/3.0);
-                BayesLogValue sigr = log_tiny.val > rval.val ? log_tiny : rval;
+                BayLaLogValue rval = bayla_log_value_power(bayla_log_value_subtract(fmaxr[d], fminr[d]), 2.0/3.0);
+                BayLaLogValue sigr = log_tiny.val > rval.val ? log_tiny : rval;
 
-                BayesLogValue sum = bayes_log_value_add(sigl, sigr);
+                BayLaLogValue sum = bayla_log_value_add(sigl, sigr);
 
                 if(sum.val <= sumb.val)
                 {
@@ -1888,8 +1888,8 @@ bayes_miser_integrate_inner(
         f64 rgr = max_xs[db];
         f64 fracl = fabs((rgm - rgl) / (rgr - rgl));
 
-        f64 siglb_linear = bayes_log_value_map_out_of_log_domain(siglb);
-        f64 sigrb_linear = bayes_log_value_map_out_of_log_domain(sigrb);
+        f64 siglb_linear = bayla_log_value_map_out_of_log_domain(siglb);
+        f64 sigrb_linear = bayla_log_value_map_out_of_log_domain(sigrb);
         size nptl = (size)(
                 min_points + (npts - n_pre - 2 * min_points) * fracl * siglb_linear /
                 (fracl * siglb_linear + (1.0 - fracl) * sigrb_linear));
@@ -1900,7 +1900,7 @@ bayes_miser_integrate_inner(
         /* Set up other domains for recursion. */
         memcpy(max_xs_l, max_xs, sizeof(f64) * ndim);
         max_xs_l[db] = x_mids[db];
-        BayesValue lave = bayes_miser_integrate_inner(
+        BayLaValue lave = bayla_miser_integrate_inner(
                 args,
                 min_xs,
                 max_xs_l,
@@ -1915,7 +1915,7 @@ bayes_miser_integrate_inner(
 
         memcpy(min_xs_r, min_xs, sizeof(f64) * ndim);
         min_xs_r[db] = x_mids[db];
-        BayesValue rave = bayes_miser_integrate_inner(
+        BayLaValue rave = bayla_miser_integrate_inner(
                 args,
                 min_xs_r,
                 max_xs,
@@ -1928,37 +1928,37 @@ bayes_miser_integrate_inner(
                 ran,
                 scratch);
 
-        BayesLogValue lfracl = bayes_log_value_map_into_log_domain(fracl);
-        BayesLogValue lfracr = bayes_log_value_map_into_log_domain(1.0 - fracl);
+        BayLaLogValue lfracl = bayla_log_value_map_into_log_domain(fracl);
+        BayLaLogValue lfracr = bayla_log_value_map_into_log_domain(1.0 - fracl);
 
-        BayesLogValue ave = bayes_log_value_add(
-                bayes_log_value_multiply(lfracl, lave.value),
-                bayes_log_value_multiply(lfracr, rave.value));
+        BayLaLogValue ave = bayla_log_value_add(
+                bayla_log_value_multiply(lfracl, lave.value),
+                bayla_log_value_multiply(lfracr, rave.value));
 
-        BayesLogValue var = bayes_log_value_add(
-                bayes_log_value_multiply(bayes_log_value_power(lfracl, 2.0), lave.error),
-                bayes_log_value_multiply(bayes_log_value_power(lfracr, 2.0), rave.error));
+        BayLaLogValue var = bayla_log_value_add(
+                bayla_log_value_multiply(bayla_log_value_power(lfracl, 2.0), lave.error),
+                bayla_log_value_multiply(bayla_log_value_power(lfracr, 2.0), rave.error));
 
         *n_samples += n_pre;
 
-        return (BayesValue){ .value = ave, .error = var};
+        return (BayLaValue){ .value = ave, .error = var};
     }
 
-    return (BayesValue){0};
+    return (BayLaValue){0};
 #pragma warning(pop)
 }
 
-static inline BayesEvidenceResult
-bayes_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opts, MagStaticArena scratch)
+API BayLaEvidenceResult
+bayla_miser_integrate(BayLaModel const *model, BayLaIntegratorOptions *opts, MagStaticArena scratch)
 {
-    BayesEvidenceResult retval = {.strategy = BAYES_INTEGRATE_MISER};
+    BayLaEvidenceResult retval = {.strategy = BAYLA_INTEGRATE_MISER};
 
     size min_points = opts->miser.min_points;
     size min_to_subdivide = opts->miser.min_to_subdivide;
     size total_samples = opts->miser.total_samples;
     f64 explore_factor = opts->miser.explore_factor;
-    BayesLogValue acceptable_abs_error = bayes_log_value_map_into_log_domain(opts->miser.acceptable_abs_error);
-    BayesLogValue acceptable_prop_error = bayes_log_value_map_into_log_domain(opts->miser.acceptable_prop_error);
+    BayLaLogValue acceptable_abs_error = bayla_log_value_map_into_log_domain(opts->miser.acceptable_abs_error);
+    BayLaLogValue acceptable_prop_error = bayla_log_value_map_into_log_domain(opts->miser.acceptable_prop_error);
 
     u64 seed = opts->miser.seed;
 
@@ -1971,14 +1971,14 @@ bayes_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
     {
         volume *= (max_vals[d] - min_vals[d]);
     }
-    BayesLogValue log_volume = bayes_log_value_map_into_log_domain(volume);
+    BayLaLogValue log_volume = bayla_log_value_map_into_log_domain(volume);
 
-    BayesMiserInnerFunctionArgs args = { .model = model, .ndim = ndim, .map = NULL };
+    BayLaMiserInnerFunctionArgs args = { .model = model, .ndim = ndim, .map = NULL };
 
     ElkRandomState random_state_ = elk_random_state_create(seed);
     ElkRandomState *ran = &random_state_;
 
-    retval.result = bayes_miser_integrate_inner(
+    retval.result = bayla_miser_integrate_inner(
             args,
             min_vals,
             max_vals,
@@ -1991,12 +1991,12 @@ bayes_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
             ran,
             scratch);
 
-    retval.result.error = bayes_log_value_multiply(log_volume, bayes_log_value_power(retval.result.error, 0.5));
-    retval.result.value = bayes_log_value_multiply(log_volume, retval.result.value);
+    retval.result.error = bayla_log_value_multiply(log_volume, bayla_log_value_power(retval.result.error, 0.5));
+    retval.result.value = bayla_log_value_multiply(log_volume, retval.result.value);
 
     b32 absolutely_converged = !isnan(acceptable_abs_error.val) && retval.result.error.val < acceptable_abs_error.val;
     b32 proportionaly_converged = !isnan(acceptable_prop_error.val) &&
-        bayes_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val;
+        bayla_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val;
 
     if(absolutely_converged || proportionaly_converged)
     {
@@ -2010,10 +2010,10 @@ bayes_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opts, Mag
     return retval;
 }
 
-static inline BayesEvidenceResult
-bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opts, MagStaticArena scratch_)
+API BayLaEvidenceResult
+bayla_vegas_miser_integrate(BayLaModel const *model, BayLaIntegratorOptions *opts, MagStaticArena scratch_)
 {
-    BayesEvidenceResult retval = {.strategy = BAYES_INTEGRATE_VEGAS_MISER, .converged = true };
+    BayLaEvidenceResult retval = {.strategy = BAYLA_INTEGRATE_VEGAS_MISER, .converged = true };
 
     MagStaticArena *scratch = &scratch_;
 
@@ -2025,8 +2025,8 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
     size min_to_subdivide = opts->vegas_miser.min_to_subdivide;
     f64 alpha = opts->vegas_miser.alpha;
     f64 explore_factor = opts->vegas_miser.explore_factor;
-    BayesLogValue acceptable_abs_error = bayes_log_value_map_into_log_domain(opts->vegas_miser.acceptable_abs_error);
-    BayesLogValue acceptable_prop_error = bayes_log_value_map_into_log_domain(opts->vegas_miser.acceptable_prop_error);
+    BayLaLogValue acceptable_abs_error = bayla_log_value_map_into_log_domain(opts->vegas_miser.acceptable_abs_error);
+    BayLaLogValue acceptable_prop_error = bayla_log_value_map_into_log_domain(opts->vegas_miser.acceptable_prop_error);
 
     u64 seed = opts->vegas_miser.seed;
 
@@ -2037,14 +2037,14 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
     ElkRandomState random_state_ = elk_random_state_create(seed);
     ElkRandomState *ran = &random_state_;
 
-    BayesVegasMap *map = NULL;
+    BayLaVegasMap *map = NULL;
     if(opts->vegas_miser.map)
     {
         map = opts->vegas_miser.map;
     }
     else
     {
-       map = bayes_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, scratch);
+       map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, scratch);
     }
 
     size max_iterations = max_total_samples / samples_per_refinement * 2; /* Give some extra space here. */
@@ -2057,11 +2057,11 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
         max_ys[d] = 1.0;
     }
 
-    BayesMiserInnerFunctionArgs args = { .model = model, .ndim = ndim, .map = map };
+    BayLaMiserInnerFunctionArgs args = { .model = model, .ndim = ndim, .map = map };
 
     /* Allocate some workspace memory. */
-    BayesLogValue *log_integral = eco_nmalloc(scratch, max_iterations, BayesLogValue);
-    BayesLogValue *log_integral_err = eco_nmalloc(scratch, max_iterations, BayesLogValue);
+    BayLaLogValue *log_integral = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
+    BayLaLogValue *log_integral_err = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
     size *samples_per_iter = eco_nmalloc(scratch, max_iterations, size);
 
     size iter = 0;
@@ -2069,7 +2069,7 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
     {
         size total_samples = 0;
 
-        BayesValue integral = bayes_miser_integrate_inner(
+        BayLaValue integral = bayla_miser_integrate_inner(
                 args,
                 min_ys,
                 max_ys,
@@ -2083,12 +2083,12 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
                 scratch_);
 
         log_integral[iter] = integral.value;
-        log_integral_err[iter] = bayes_log_value_power(integral.error, 0.5);
+        log_integral_err[iter] = bayla_log_value_power(integral.error, 0.5);
         retval.total_samples += total_samples;
 
         iter++;
 
-        bayes_vegas_accumulate_results(&retval, iter, samples_per_iter, log_integral, log_integral_err);
+        bayla_vegas_accumulate_results(&retval, iter, samples_per_iter, log_integral, log_integral_err);
 
         /* Check stopping conditions. */
         if(retval.samples_used > min_total_samples)
@@ -2097,7 +2097,7 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
             {
                 break;
             }
-            else if(!isnan(acceptable_prop_error.val) && bayes_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val)
+            else if(!isnan(acceptable_prop_error.val) && bayla_log_value_divide(retval.result.error, retval.result.value).val < acceptable_prop_error.val)
             {
                 break;
             }
@@ -2110,7 +2110,7 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
             break;
         }
 
-        bayes_vegas_map_refine(map, scratch_);
+        bayla_vegas_map_refine(map, scratch_);
 
     }
 
@@ -2119,22 +2119,22 @@ bayes_vegas_miser_integrate(BayesModel const *model, BayesIntegratorOptions *opt
 
 #undef TINY
 
-static inline BayesEvidenceResult 
-bayes_calculate_evidence(BayesModel const *model, BayesIntegratorOptions *opts, MagStaticArena scratch)
+API BayLaEvidenceResult 
+bayla_calculate_evidence(BayLaModel const *model, BayLaIntegratorOptions *opts, MagStaticArena scratch)
 {
     switch(opts->strategy)
     {
-        case BAYES_INTEGRATE_VEGAS_PLUS:  return bayes_vegas_plus_integrate(model, opts, scratch);
-        case BAYES_INTEGRATE_VEGAS_MISER: return bayes_vegas_miser_integrate(model, opts, scratch);
-        case BAYES_INTEGRATE_VEGAS:       return bayes_vegas_integrate(model, opts, scratch);
-        case BAYES_INTEGRATE_MONTE_CARLO: return bayes_simple_monte_carlo_integrate(model, opts, scratch);
-        case BAYES_INTEGRATE_MISER:       return bayes_miser_integrate(model, opts, scratch);
+        case BAYLA_INTEGRATE_VEGAS_PLUS:  return bayla_vegas_plus_integrate(model, opts, scratch);
+        case BAYLA_INTEGRATE_VEGAS_MISER: return bayla_vegas_miser_integrate(model, opts, scratch);
+        case BAYLA_INTEGRATE_VEGAS:       return bayla_vegas_integrate(model, opts, scratch);
+        case BAYLA_INTEGRATE_MONTE_CARLO: return bayla_simple_monte_carlo_integrate(model, opts, scratch);
+        case BAYLA_INTEGRATE_MISER:       return bayla_miser_integrate(model, opts, scratch);
         default:
             {
-                return (BayesEvidenceResult)
+                return (BayLaEvidenceResult)
                     { 
-                        .strategy = BAYES_INTEGRATE_INVALID,
-                        .result = (BayesValue){.value = (BayesLogValue){.val = NAN}, .error = (BayesLogValue){.val = NAN } },
+                        .strategy = BAYLA_INTEGRATE_INVALID,
+                        .result = (BayLaValue){.value = (BayLaLogValue){.val = NAN}, .error = (BayLaLogValue){.val = NAN } },
                         .converged = false
                     };
             }

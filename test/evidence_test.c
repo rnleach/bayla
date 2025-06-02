@@ -57,7 +57,7 @@ f64 log_max_parms[1] = {20.0};
 static f64 log_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 */
-    return -parms[0] - bayes_log1mexp(log_max_parms[0]);
+    return -parms[0] - bayla_log1mexp(log_max_parms[0]);
 }
 
 static f64 log_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -79,7 +79,7 @@ static f64 log_parameters_log_likelihood(size num_parms, f64 const *parms, void 
 
 UserData log_user_data = {0};
 
-BayesModel log_model = 
+BayLaModel log_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 1,
@@ -98,7 +98,7 @@ f64 constant_max_parms[2] = { 2.0, 20.0};
 static f64 constant_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 4.0)) - parms[1] - bayes_log1mexp(constant_max_parms[1]);
+    return log((1.0 / 4.0)) - parms[1] - bayla_log1mexp(constant_max_parms[1]);
 }
 
 static f64 constant_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -120,7 +120,7 @@ static f64 constant_parameters_log_likelihood(size num_parms, f64 const *parms, 
 
 UserData constant_user_data = {0};
 
-BayesModel constant_model = 
+BayLaModel constant_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 2,
@@ -139,7 +139,7 @@ f64 linear_max_parms[3] = { 0.0, 4.0, 20.0};
 static f64 linear_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 4.0)) - parms[2] - bayes_log1mexp(linear_max_parms[2]);
+    return log((1.0 / 2.0) * (1.0 / 4.0)) - parms[2] - bayla_log1mexp(linear_max_parms[2]);
 }
 
 static f64 linear_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -165,7 +165,7 @@ static f64 linear_parameters_log_likelihood(size num_parms, f64 const *parms, vo
 
 UserData linear_user_data = {0};
 
-BayesModel linear_model = 
+BayLaModel linear_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 3,
@@ -184,7 +184,7 @@ f64 second_order_max_parms[4] = {+0.0, +4.0, +2.0, 20.0};
 static f64 second_order_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0)) - parms[3] - bayes_log1mexp(second_order_max_parms[3]);
+    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0)) - parms[3] - bayla_log1mexp(second_order_max_parms[3]);
 }
 
 static f64 second_order_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -219,7 +219,7 @@ static f64 second_order_parameters_log_likelihood(size num_parms, f64 const *par
 
 UserData second_order_user_data = {0};
 
-BayesModel second_order_model = 
+BayLaModel second_order_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 4,
@@ -238,7 +238,7 @@ f64 third_order_max_parms[5] = {+0.0, +4.0, +2.0, +2.0, 20.0};
 static f64 third_order_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0) * (1.0 / 4.0)) - parms[4] - bayes_log1mexp(third_order_max_parms[4]);
+    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0) * (1.0 / 4.0)) - parms[4] - bayla_log1mexp(third_order_max_parms[4]);
 }
 
 static f64 third_order_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -282,7 +282,7 @@ static f64 third_order_parameters_log_likelihood(size num_parms, f64 const *parm
 
 UserData third_order_user_data = {0};
 
-BayesModel third_order_model = 
+BayLaModel third_order_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 5,
@@ -301,7 +301,7 @@ f64 fourth_order_max_parms[6] = {+0.0, +4.0, +2.0, +2.0, +2.0, 20.0};
 static f64 fourth_order_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0) * (1.0 / 4.0) * (1.0 / 4.0)) - parms[5] - bayes_log1mexp(fourth_order_max_parms[5]);
+    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0) * (1.0 / 4.0) * (1.0 / 4.0)) - parms[5] - bayla_log1mexp(fourth_order_max_parms[5]);
 }
 
 static f64 fourth_order_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -353,7 +353,7 @@ static f64 fourth_order_parameters_log_likelihood(size num_parms, f64 const *par
 
 UserData fourth_order_user_data = {0};
 
-BayesModel fourth_order_model = 
+BayLaModel fourth_order_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 6,
@@ -372,7 +372,7 @@ f64 fifth_order_max_parms[7] = {+0.0,  4.0, +2.0, +2.0, +2.0, +2.0, 20.0};
 static f64 fifth_order_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
     /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0) * (1.0 / 4.0) * (1.0 / 4.0) * (1.0 / 4.0)) - parms[6] - bayes_log1mexp(fifth_order_max_parms[6]);
+    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0) * (1.0 / 4.0) * (1.0 / 4.0) * (1.0 / 4.0)) - parms[6] - bayla_log1mexp(fifth_order_max_parms[6]);
 }
 
 static f64 fifth_order_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
@@ -428,7 +428,7 @@ static f64 fifth_order_parameters_log_likelihood(size num_parms, f64 const *parm
 
 UserData fifth_order_user_data = {0};
 
-BayesModel fifth_order_model = 
+BayLaModel fifth_order_model = 
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 7,
@@ -443,7 +443,7 @@ BayesModel fifth_order_model =
 static inline void
 initialize_global_data(void)
 {
-    BayesNormalDistribution normal = bayes_normal_distribution_create(0.0, 0.25);
+    BayLaNormalDistribution normal = bayla_normal_distribution_create(0.0, 0.25);
     ElkRandomState ran = elk_random_state_create(12);
 
     f64 sum_y_sq = 0.0;
@@ -475,7 +475,7 @@ initialize_global_data(void)
         // approximate log(x) from x = 0.1 to 3.0 */
         global_xs[i] = 0.1 + 2.9 * i / (NUM_DATA_POINTS - 1);
         global_ys[i] = natural_log_approximation_by_3rd_order_polynomial(global_xs[i], 0.9);
-        f64 error = bayes_normal_distribution_random_deviate(&normal, &ran);
+        f64 error = bayla_normal_distribution_random_deviate(&normal, &ran);
         global_ys[i] += error;
 
         sum_y_sq += global_ys[i] * global_ys[i];
@@ -572,10 +572,10 @@ initialize_global_data(void)
 
 /*---------------------------------------------------  Test Models   -----------------------------------------------------*/
 
-static BayesIntegratorOptions global_opts[] =
+static BayLaIntegratorOptions global_opts[] =
     {
         {
-            .strategy = BAYES_INTEGRATE_MONTE_CARLO,
+            .strategy = BAYLA_INTEGRATE_MONTE_CARLO,
             .simple_monte_carlo.min_samples = 50000,
             .simple_monte_carlo.max_samples = 30000000,
             .simple_monte_carlo.samples_per_batch = 1000,
@@ -585,7 +585,7 @@ static BayesIntegratorOptions global_opts[] =
         },
 
         {
-            .strategy = BAYES_INTEGRATE_MISER,
+            .strategy = BAYLA_INTEGRATE_MISER,
             .miser.min_points = 30,
             .miser.min_to_subdivide = 120,
             .miser.total_samples = 30000000,
@@ -596,7 +596,7 @@ static BayesIntegratorOptions global_opts[] =
         },
 
         {
-            .strategy = BAYES_INTEGRATE_VEGAS,
+            .strategy = BAYLA_INTEGRATE_VEGAS,
             .vegas.min_total_samples = 50000,
             .vegas.max_total_samples = 30000000,
             .vegas.samples_per_refinement = 2000000,
@@ -608,7 +608,7 @@ static BayesIntegratorOptions global_opts[] =
         },
 
         {
-            .strategy = BAYES_INTEGRATE_VEGAS_MISER,
+            .strategy = BAYLA_INTEGRATE_VEGAS_MISER,
             .vegas_miser.min_total_samples = 50000,
             .vegas_miser.max_total_samples = 30000000,
             .vegas_miser.samples_per_refinement = 200000,
@@ -623,7 +623,7 @@ static BayesIntegratorOptions global_opts[] =
         },
 
         {
-            .strategy = BAYES_INTEGRATE_VEGAS_PLUS,
+            .strategy = BAYLA_INTEGRATE_VEGAS_PLUS,
             .vegas_plus.min_total_samples = 50000,
             .vegas_plus.max_total_samples = 30000000,
             .vegas_plus.samples_per_refinement = 2000000,
@@ -637,18 +637,18 @@ static BayesIntegratorOptions global_opts[] =
     };
 
 static inline void
-test_evidence_for_polynomial_degree(BayesIntegratorOptions *opts)
+test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
 {
 #define NUM_MODELS  7
 
-    BayesModel *models[NUM_MODELS] = 
+    BayLaModel *models[NUM_MODELS] = 
         {
             &log_model, &constant_model, &linear_model,
             &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
         };
 
     char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
-    BayesEvidenceResult evidence[NUM_MODELS] = {0};
+    BayLaEvidenceResult evidence[NUM_MODELS] = {0};
 
     MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_MiB(64));
 
@@ -658,8 +658,8 @@ test_evidence_for_polynomial_degree(BayesIntegratorOptions *opts)
     size max_evidence_index = -1;
     for(size m = 0; m < NUM_MODELS; ++m)
     {
-        BayesModel *model = models[m];
-        evidence[m] = bayes_calculate_evidence(model, opts, scratch);
+        BayLaModel *model = models[m];
+        evidence[m] = bayla_calculate_evidence(model, opts, scratch);
         if(evidence[m].result.value.val > max_evidence)
         {
             max_evidence = evidence[m].result.value.val;
@@ -675,22 +675,22 @@ test_evidence_for_polynomial_degree(BayesIntegratorOptions *opts)
                 m == max_evidence_index ? "*": " ",
                 evidence[m].converged ? " ": "-",
                 model_names[m],
-                bayes_log_value_map_out_of_log_domain(evidence[m].result.value),
-                bayes_log_value_map_out_of_log_domain(evidence[m].result.error),
-                100.0 * bayes_log_value_map_out_of_log_domain(bayes_log_value_divide(evidence[m].result.error, evidence[m].result.value)),
+                bayla_log_value_map_out_of_log_domain(evidence[m].result.value),
+                bayla_log_value_map_out_of_log_domain(evidence[m].result.error),
+                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(evidence[m].result.error, evidence[m].result.value)),
                 evidence[m].total_samples);
         
         switch(evidence[m].strategy)
         {
-        case BAYES_INTEGRATE_VEGAS:
-        case BAYES_INTEGRATE_VEGAS_PLUS:
-        case BAYES_INTEGRATE_VEGAS_MISER:
-        case BAYES_INTEGRATE_MISER:
+        case BAYLA_INTEGRATE_VEGAS:
+        case BAYLA_INTEGRATE_VEGAS_PLUS:
+        case BAYLA_INTEGRATE_VEGAS_MISER:
+        case BAYLA_INTEGRATE_MISER:
             {
                 printf(" %10td", evidence[m].samples_used);
             } break;
 
-        case BAYES_INTEGRATE_MONTE_CARLO:
+        case BAYLA_INTEGRATE_MONTE_CARLO:
             {
                 printf("%10s", " ");
             } break;
@@ -719,18 +719,18 @@ test_evidence_for_polynomial_degree(BayesIntegratorOptions *opts)
 /*-------------------------------------------  Preconditioning Sampling  --------------------------------------------------*/
 
 static inline void
-test_sampling_preconditioning(BayesIntegratorOptions *opts)
+test_sampling_preconditioning(BayLaIntegratorOptions *opts)
 {
 #define NUM_MODELS  7
 
-    BayesModel *models[NUM_MODELS] = 
+    BayLaModel *models[NUM_MODELS] = 
         {
             &log_model, &constant_model, &linear_model,
             &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
         };
 
     char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
-    BayesEvidenceResult evidence[NUM_MODELS] = {0};
+    BayLaEvidenceResult evidence[NUM_MODELS] = {0};
 
     MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_MiB(32));
     MagStaticArena perm_ = mag_static_arena_allocate_and_create(ECO_MiB(32));
@@ -745,7 +745,7 @@ test_sampling_preconditioning(BayesIntegratorOptions *opts)
     size max_evidence_index = -1;
     for(size m = 0; m < NUM_MODELS; ++m)
     {
-        BayesModel *model = models[m];
+        BayLaModel *model = models[m];
 
         f64 *min_vals = model->min_parameter_vals;
         f64 *max_vals = model->max_parameter_vals;
@@ -755,22 +755,22 @@ test_sampling_preconditioning(BayesIntegratorOptions *opts)
         }
 
         CoyProfileAnchor ap = COY_START_PROFILE_BLOCK("Precondition Sampling.");
-        BayesPreconditioningSamplerArgs args = bayes_preconditioning_sampler_args_allocate_and_create(
+        BayLaPreconditioningSamplerArgs args = bayla_preconditioning_sampler_args_allocate_and_create(
                 model,
                 1000,
                 10000,
                 starting_values,
                 perm);
 
-        bayes_preconditioning_sample(&args, &ran, scratch);
+        bayla_preconditioning_sample(&args, &ran, scratch);
         COY_END_PROFILE(ap);
 
         ap = COY_START_PROFILE_BLOCK("Preconditioning.");
-        BayesParametersSamples *samples = args.output;
-        bayes_vegas_map_precondition(model, opts, samples, perm);
+        BayLaParametersSamples *samples = args.output;
+        bayla_vegas_map_precondition(model, opts, samples, perm);
         COY_END_PROFILE(ap);
 
-        evidence[m] = bayes_calculate_evidence(model, opts, scratch);
+        evidence[m] = bayla_calculate_evidence(model, opts, scratch);
         if(evidence[m].result.value.val > max_evidence)
         {
             max_evidence = evidence[m].result.value.val;
@@ -786,22 +786,22 @@ test_sampling_preconditioning(BayesIntegratorOptions *opts)
                 m == max_evidence_index ? "*": " ",
                 evidence[m].converged ? " ": "-",
                 model_names[m],
-                bayes_log_value_map_out_of_log_domain(evidence[m].result.value),
-                bayes_log_value_map_out_of_log_domain(evidence[m].result.error),
-                100.0 * bayes_log_value_map_out_of_log_domain(bayes_log_value_divide(evidence[m].result.error, evidence[m].result.value)),
+                bayla_log_value_map_out_of_log_domain(evidence[m].result.value),
+                bayla_log_value_map_out_of_log_domain(evidence[m].result.error),
+                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(evidence[m].result.error, evidence[m].result.value)),
                 evidence[m].total_samples);
 
         switch(evidence[m].strategy)
         {
-        case BAYES_INTEGRATE_VEGAS:
-        case BAYES_INTEGRATE_VEGAS_PLUS:
-        case BAYES_INTEGRATE_VEGAS_MISER:
-        case BAYES_INTEGRATE_MISER:
+        case BAYLA_INTEGRATE_VEGAS:
+        case BAYLA_INTEGRATE_VEGAS_PLUS:
+        case BAYLA_INTEGRATE_VEGAS_MISER:
+        case BAYLA_INTEGRATE_MISER:
             {
                 printf(" %10td", evidence[m].samples_used);
             } break;
 
-        case BAYES_INTEGRATE_MONTE_CARLO:
+        case BAYLA_INTEGRATE_MONTE_CARLO:
             {
                 printf("%10s", " ");
             } break;
@@ -852,7 +852,7 @@ static f64 pi_log_likelihood(size num_parms, f64 const *parms, void *user_data)
     return -INFINITY;
 }
 
-BayesModel pi_model = 
+BayLaModel pi_model = 
     {
         .model_prior_probability = 1.0,
         .n_parameters = 2,
@@ -872,11 +872,11 @@ test_evidence_pi(void)
 
     char *names[] = {"Simple Monte Carlo", "MISER", "VEGAS", "MISER-VEGAS", "VEGAS+"};
 
-    BayesIntegratorOptions opts[]= 
+    BayLaIntegratorOptions opts[]= 
         {
-            (BayesIntegratorOptions)
+            (BayLaIntegratorOptions)
             {
-                .strategy = BAYES_INTEGRATE_MONTE_CARLO,
+                .strategy = BAYLA_INTEGRATE_MONTE_CARLO,
                 .simple_monte_carlo.min_samples = 10000,
                 .simple_monte_carlo.max_samples = 20000000,
                 .simple_monte_carlo.samples_per_batch = 10000,
@@ -885,9 +885,9 @@ test_evidence_pi(void)
                 .simple_monte_carlo.seed = 43
             },
 
-            (BayesIntegratorOptions)
+            (BayLaIntegratorOptions)
             {
-                .strategy = BAYES_INTEGRATE_MISER,
+                .strategy = BAYLA_INTEGRATE_MISER,
                 .miser.min_points = 30,
                 .miser.min_to_subdivide = 120,
                 .miser.total_samples = 20000000,
@@ -897,9 +897,9 @@ test_evidence_pi(void)
                 .miser.seed = 44
             },
 
-            (BayesIntegratorOptions)
+            (BayLaIntegratorOptions)
             {
-                .strategy = BAYES_INTEGRATE_VEGAS,
+                .strategy = BAYLA_INTEGRATE_VEGAS,
                 .vegas.min_total_samples = 10000,
                 .vegas.max_total_samples = 20000000,
                 .vegas.samples_per_refinement = 10000,
@@ -910,9 +910,9 @@ test_evidence_pi(void)
                 .vegas.seed = 45
             },
 
-            (BayesIntegratorOptions)
+            (BayLaIntegratorOptions)
             {
-                .strategy = BAYES_INTEGRATE_VEGAS_MISER,
+                .strategy = BAYLA_INTEGRATE_VEGAS_MISER,
                 .vegas_miser.min_total_samples = 10000,
                 .vegas_miser.max_total_samples = 20000000,
                 .vegas_miser.samples_per_refinement = 10000,
@@ -926,9 +926,9 @@ test_evidence_pi(void)
                 .vegas_miser.seed = 46
             },
 
-            (BayesIntegratorOptions)
+            (BayLaIntegratorOptions)
             {
-                .strategy = BAYES_INTEGRATE_VEGAS_PLUS,
+                .strategy = BAYLA_INTEGRATE_VEGAS_PLUS,
                 .vegas_plus.min_total_samples = 10000,
                 .vegas_plus.max_total_samples = 20000000,
                 .vegas_plus.samples_per_refinement = 10000,
@@ -948,28 +948,28 @@ test_evidence_pi(void)
             "Method", "Value", "Error", "Pct Err", "True Err", "Pct True", "Samples", "Samples Used");
     for(size method = 0; method < sizeof(opts)/ sizeof(opts[0]); ++method)
     {
-        BayesEvidenceResult evidence = bayes_calculate_evidence(&pi_model, &opts[method], scratch);
-        f64 true_error = bayes_log_value_map_out_of_log_domain(evidence.result.value) - ELK_PI;
-        f64 true_error_z_score = true_error / bayes_log_value_map_out_of_log_domain(evidence.result.error);
+        BayLaEvidenceResult evidence = bayla_calculate_evidence(&pi_model, &opts[method], scratch);
+        f64 true_error = bayla_log_value_map_out_of_log_domain(evidence.result.value) - ELK_PI;
+        f64 true_error_z_score = true_error / bayla_log_value_map_out_of_log_domain(evidence.result.error);
 
         printf("%20s - %lf ± %lf [%8.4lf%%] %8.4lf [%8.4lf%%]",
                 names[method],
-                bayes_log_value_map_out_of_log_domain(evidence.result.value), 
-                bayes_log_value_map_out_of_log_domain(evidence.result.error),
-                100.0 * bayes_log_value_map_out_of_log_domain(bayes_log_value_divide(evidence.result.error, evidence.result.value)),
+                bayla_log_value_map_out_of_log_domain(evidence.result.value), 
+                bayla_log_value_map_out_of_log_domain(evidence.result.error),
+                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(evidence.result.error, evidence.result.value)),
                 true_error_z_score, true_error / ELK_PI * 100.0);
 
         switch(evidence.strategy)
         {
-            case BAYES_INTEGRATE_MONTE_CARLO:
+            case BAYLA_INTEGRATE_MONTE_CARLO:
             {
                 printf(" %8td [ %12td ]\n", evidence.total_samples, evidence.total_samples);
             } break;
 
-            case BAYES_INTEGRATE_VEGAS_PLUS:
-            case BAYES_INTEGRATE_VEGAS:
-            case BAYES_INTEGRATE_MISER:
-            case BAYES_INTEGRATE_VEGAS_MISER:
+            case BAYLA_INTEGRATE_VEGAS_PLUS:
+            case BAYLA_INTEGRATE_VEGAS:
+            case BAYLA_INTEGRATE_MISER:
+            case BAYLA_INTEGRATE_VEGAS_MISER:
             {
                 printf(" %8td [ %12td ]\n", evidence.total_samples, evidence.samples_used);
             } break;
