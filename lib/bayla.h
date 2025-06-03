@@ -457,11 +457,6 @@ bayla_preconditioning_sampler_args_allocate_and_create(
 API void 
 bayla_preconditioning_sample(BayLaPreconditioningSamplerArgs *args, ElkRandomState *state, MagStaticArena scratch)
 {
-    /* This is CRUDELY based on Metropolis-Hastings algorithm. In that algorithm you would add a point to the chain again
-     * if you chose not to move. But this algorithm only adds points after you have decided to move to them, but doesn't
-     * add them again. This has shown in tests to produce a set of samples that is better for preconditioning a VEGAS grid.
-     */
-
     /* unpack the arguments */
     size N = args->model->n_parameters;
     f64 const *starting_params = args->starting_params;
