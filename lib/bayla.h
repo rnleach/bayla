@@ -741,6 +741,38 @@ bayla_vegas_map_create(
     return map;
 }
 
+/* Don't put this in the main API because it's not intended for regular use yet, it's just intended for use in tests
+ * to check the consistency of multiple runs of the post preconditioning integrator.
+ */
+API BayLaVegasMap *
+bayla_vegas_map_deep_copy(BayLaVegasMap *src, MagStaticArena *perm)
+{
+    BayLaVegasMap *map = eco_malloc(perm, BayLaVegasMap);
+    
+    map->ndim = src->ndim;
+    map->n_grid = src->n_grid;
+    map->alpha = src->alpha;
+    map->max_vals = src->max_vals;
+    map->min_vals = src->min_vals;
+
+    map->n_s = eco_nmalloc(perm, map->ndim * map->n_grid, size);
+    memcpy(map->n_s, src->n_s, map->ndim * map->n_grid * sizeof(size));
+    map->iy = eco_nmalloc(perm, map->ndim, size);
+    memcpy(map->iy, src->iy, map->ndim * sizeof(size));
+
+    map->xs = eco_nmalloc(perm, map->ndim * (map->n_grid + 1), f64);
+    memcpy(map->xs, src->xs, map->ndim * (map->n_grid + 1) * sizeof(f64));
+    map->delta_xs = eco_nmalloc(perm, map->ndim * (map->n_grid + 1), f64);
+    memcpy(map->delta_xs, src->delta_xs, map->ndim * (map->n_grid + 1) * sizeof(f64));
+
+    map->ds = eco_nmalloc(perm, map->ndim * map->n_grid, BayLaDualDomainValue);
+    memcpy(map->ds, src->ds, map->ndim * map->n_grid * sizeof(BayLaDualDomainValue));
+
+    Assert(map->n_s && map->iy && map->xs && map->delta_xs && map->ds);
+
+    return map;
+}
+
 API void
 bayla_vegas_map_evaluate(
         BayLaModel const *model,
