@@ -1,4 +1,17 @@
-/*------------------------------------------------- Data Gen Function ----------------------------------------------------*/
+/*-------------------------------------------------- Utility Functions ----------------------------------------------------*/
+f64
+percentile(size num, f64 *vals, f64 target, MagStaticArena scratch)
+{
+    f64 *work_space = eco_nmalloc(&scratch, num, f64);
+
+    pak_radix_sort(vals, num, 0, sizeof(f64), work_space, PAK_RADIX_SORT_F64, PAK_SORT_ASCENDING);
+
+    size less;
+    for(less = 0; less < num && target > vals[less]; ++less);
+    return (f64)less / (f64)num * 100.0;
+}
+
+/*-------------------------------------------------- Data Gen Function ----------------------------------------------------*/
 
 static inline f64
 natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
@@ -9,7 +22,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 50
+#define NUM_DATA_POINTS 100
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -758,7 +771,7 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
 
 /*----------------------------------------------------- Consistency -------------------------------------------------------*/
 
-#define NUM_TRIALS 30
+#define NUM_TRIALS 100
 
 static inline void
 test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
@@ -824,11 +837,13 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
         f64 min_err = INFINITY;
         f64 max_err = -INFINITY;
         f64 sum = 0.0;
+        f64 errors[NUM_TRIALS] = {0};
         for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
         {
             f64 err = bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.error);
             min_err = min_err < err ? min_err : err;
             max_err = max_err > err ? max_err : err;
+            errors[cnt] = err;
 
             sum += bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.value);
         }
@@ -841,7 +856,12 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
             sum_diff_sq += (value - mean) * (value - mean); 
         }
         f64 std = sqrt(sum_diff_sq / (NUM_TRIALS - 1));
-        printf("%10s %8.6e ± %8.6e [%8.6e <-> %8.6e]\n", model_names[m], mean, std, min_err, max_err);
+
+        f64 pct = percentile(NUM_TRIALS, errors, std, mag_static_arena_borrow(&scratches[0]));
+        f64 pct_error = std/mean * 100.0;
+
+        printf("%10s %8.6e ± %8.6e [%8.6e <-> %8.6e] %6.2lf%% %5.1lf%%\n",
+                model_names[m], mean, std, min_err, max_err, pct_error, pct);
     }
 
 #ifdef _MAG_TRACK_MEM_USAGE
