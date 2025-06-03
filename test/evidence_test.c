@@ -639,13 +639,14 @@ static BayLaIntegratorOptions global_opts[] =
 static inline void
 test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
 {
-#define NUM_MODELS  7
 
-    BayLaModel *models[NUM_MODELS] = 
+    BayLaModel *models[] = 
         {
             &log_model, &constant_model, &linear_model,
             &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
         };
+
+#define NUM_MODELS  ECO_ARRAY_SIZE(models)
 
     char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
     BayLaEvidenceResult evidence[NUM_MODELS] = {0};
@@ -721,13 +722,14 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
 static inline void
 test_sampling_preconditioning(BayLaIntegratorOptions *opts)
 {
-#define NUM_MODELS  7
 
-    BayLaModel *models[NUM_MODELS] = 
+    BayLaModel *models[] = 
         {
             &log_model, &constant_model, &linear_model,
             &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
         };
+
+#define NUM_MODELS  ECO_ARRAY_SIZE(models)
 
     char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
     BayLaEvidenceResult evidence[NUM_MODELS] = {0};

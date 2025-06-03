@@ -39,10 +39,7 @@ typedef f64 (*BayLaLogLikelihood)(size num_parms, f64 const *parms, void *user_d
  *-------------------------------------------------------------------------------------------------------------------------*/
 
 /* A type and functions for doing math in the log domain. */
-typedef struct
-{
-    f64 val;
-} BayLaLogValue;
+typedef struct { f64 val; } BayLaLogValue;
 
 API BayLaLogValue bayla_log_value_create(f64 log_domain_value);
 API BayLaLogValue bayla_log_value_map_into_log_domain(f64 non_log_domain_value);
@@ -55,7 +52,7 @@ API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val);
 API BayLaLogValue bayla_log_value_power(BayLaLogValue base, f64 exponent);
 API BayLaLogValue bayla_log_values_sum(size nvals, BayLaLogValue *vals);
 
-/* Functions that have less overflow / underflow / rounding errors than naive implementations.            */
+/* Functions that have less overflow / underflow / rounding errors than naive implementations.  */
 API f64 bayla_log1mexp(f64 x);                       /* log(1 - exp(-x))                        */
 API f64 bayla_log1pexp(f64 x);                       /* log(1 + exp(+x))                        */
 API f64 bayla_logsumexp(f64 x, f64 y);               /* add two numbers in the log domain.      */
