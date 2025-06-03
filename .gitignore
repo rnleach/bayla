@@ -1,6 +1,7 @@
 # Text editor, debugger
 *.vim
 bayla-test
+*.gdb_history
 
 # Prerequisites
 *.d
