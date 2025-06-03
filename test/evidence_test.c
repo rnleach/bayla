@@ -943,12 +943,12 @@ test_evidence_pi(void)
             }
         };
 
-    _Static_assert(sizeof(opts)/sizeof(opts[0]) == sizeof(names)/sizeof(names[0]), "Mismatched Arrays.");
+    _Static_assert(ECO_ARRAY_SIZE(opts) == ECO_ARRAY_SIZE(names), "Mismatched Arrays.");
     
     printf("\nCalculating Pi as a test of the integrators.\n\n");
     printf("%20s - %8s ± %8s [%9s] %8s [%9s] %8s [ %8s ]\n",
             "Method", "Value", "Error", "Pct Err", "True Err", "Pct True", "Samples", "Samples Used");
-    for(size method = 0; method < sizeof(opts)/ sizeof(opts[0]); ++method)
+    for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
     {
         BayLaEvidenceResult evidence = bayla_calculate_evidence(&pi_model, &opts[method], scratch);
         f64 true_error = bayla_log_value_map_out_of_log_domain(evidence.result.value) - ELK_PI;
