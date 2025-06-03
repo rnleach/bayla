@@ -636,6 +636,21 @@ static BayLaIntegratorOptions global_opts[] =
         }
     };
 
+typedef struct
+{
+    BayLaModel *model;
+    BayLaIntegratorOptions opts;
+    MagStaticArena scratch;
+    BayLaEvidenceResult *evidence;
+} EvidenceCalcThreadData;
+
+void
+evidence_thread_func(void *data)
+{
+    EvidenceCalcThreadData *td = data;
+    *td->evidence = bayla_calculate_evidence(td->model, &td->opts, td->scratch);
+}
+
 static inline void
 test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
 {
@@ -651,16 +666,36 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
     char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
     BayLaEvidenceResult evidence[NUM_MODELS] = {0};
 
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_MiB(64));
-
     initialize_global_data();
+
+    EvidenceCalcThreadData tds[NUM_MODELS] = {0};
+    CoyThread threads[NUM_MODELS] = {0};
+    MagStaticArena scratches[NUM_MODELS] = {0};
+    for(size m = 0; m < NUM_MODELS; ++m)
+    {
+        scratches[m] = mag_static_arena_allocate_and_create(ECO_MiB(32));
+    }
+
+    b32 success = true;
+    for(size m = 0; m < NUM_MODELS; ++m)
+    {
+        tds[m].model = models[m];
+        tds[m].opts = *opts;
+        tds[m].scratch = mag_static_arena_borrow(&scratches[m]);
+        tds[m].evidence = &evidence[m];
+
+        success &= coy_thread_create(&threads[m], evidence_thread_func, &tds[m]);
+        Assert(success);
+    }
 
     f64 max_evidence = -INFINITY;
     size max_evidence_index = -1;
     for(size m = 0; m < NUM_MODELS; ++m)
     {
-        BayLaModel *model = models[m];
-        evidence[m] = bayla_calculate_evidence(model, opts, scratch);
+        success &= coy_thread_join(&threads[m]);
+        Assert(success);
+        coy_thread_destroy(&threads[m]);
+
         if(evidence[m].result.value.val > max_evidence)
         {
             max_evidence = evidence[m].result.value.val;
@@ -703,21 +738,27 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
         printf(" %12td\n", ud->ncalls);
         total_calls += ud->ncalls;
     }
-    printf("Total calls: %.0lf million\n", total_calls / 1000000.0);
+    printf("Total calls: %.0lf million\n\n\n", total_calls / 1000000.0);
 
+    for(size m = 0; m < NUM_MODELS; ++m)
+    {
 #ifdef _MAG_TRACK_MEM_USAGE
-    f64 pct_mem = mag_static_arena_max_ratio(&scratch) * 100.0;
-    b32 over_allocated = mag_static_arena_over_allocated(&scratch);
-    printf( "\n\n%s used %.2lf%% of scratch and scratch %s over allocated.\n\n\n",
-            __func__, pct_mem, over_allocated ? "***WAS***": "was not");
+        f64 pct_mem = mag_static_arena_max_ratio(&scratches[m]) * 100.0;
+        b32 over_allocated = mag_static_arena_over_allocated(&scratches[m]);
+        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
+                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
 #endif
 
-    mag_static_arena_destroy(&scratch);
+        mag_static_arena_destroy(&scratches[m]);
+    }
 
 #undef NUM_MODELS
+
 }
 
 /*----------------------------------------------------- Consistency -------------------------------------------------------*/
+
+#define NUM_TRIALS 30
 
 static inline void
 test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
@@ -730,36 +771,55 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
         };
 
 #define NUM_MODELS  ECO_ARRAY_SIZE(models)
-#define NUM_TRIALS 30
 
     char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
     BayLaEvidenceResult evidence[NUM_MODELS][NUM_TRIALS] = {0};
 
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_MiB(64));
+    MagStaticArena scratches[NUM_TRIALS] = {0};
+    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
+    {
+        scratches[cnt] = mag_static_arena_allocate_and_create(ECO_MiB(32));
+    }
 
     initialize_global_data();
 
     for(size m = 0; m < NUM_MODELS; ++m)
     {
 
-        u64 *seed;
-        switch(opts->strategy)
+        EvidenceCalcThreadData tds[NUM_TRIALS] = {0};
+        CoyThread threads[NUM_TRIALS] = {0};
+
+        b32 success = true;
+        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
         {
-            case BAYLA_INTEGRATE_VEGAS:       seed = &opts->vegas.seed;              break;
-            case BAYLA_INTEGRATE_VEGAS_PLUS:  seed = &opts->vegas_plus.seed;         break;
-            case BAYLA_INTEGRATE_VEGAS_MISER: seed = &opts->vegas_miser.seed;        break;
-            case BAYLA_INTEGRATE_MISER:       seed = &opts->miser.seed;              break;
-            case BAYLA_INTEGRATE_MONTE_CARLO: seed = &opts->simple_monte_carlo.seed; break;
-            default: Panic();                                                        break;
+
+            tds[cnt].model = models[m];
+            tds[cnt].opts = *opts;
+
+            u64 delta = cnt * ECO_ARRAY_SIZE(models);
+            switch(tds[cnt].opts.strategy)
+            {
+                case BAYLA_INTEGRATE_VEGAS:       tds[cnt].opts.vegas.seed += delta;              break;
+                case BAYLA_INTEGRATE_VEGAS_PLUS:  tds[cnt].opts.vegas_plus.seed += delta;         break;
+                case BAYLA_INTEGRATE_VEGAS_MISER: tds[cnt].opts.vegas_miser.seed += delta;        break;
+                case BAYLA_INTEGRATE_MISER:       tds[cnt].opts.miser.seed += delta;              break;
+                case BAYLA_INTEGRATE_MONTE_CARLO: tds[cnt].opts.simple_monte_carlo.seed += delta; break;
+                default: Panic();                                                                 break;
+            }
+
+            tds[cnt].evidence = &evidence[m][cnt];
+            tds[cnt].scratch = mag_static_arena_borrow(&scratches[cnt]);
+
+            success &= coy_thread_create(&threads[cnt], evidence_thread_func, &tds[cnt]);
+            Assert(success);
         }
 
         for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
         {
-            *seed += ECO_ARRAY_SIZE(models);
-
-            BayLaModel *model = models[m];
-            evidence[m][cnt] = bayla_calculate_evidence(model, opts, scratch);
+            success &= coy_thread_join(&threads[cnt]);
+            coy_thread_destroy(&threads[cnt]);
         }
+        Assert(success);
 
         f64 min_err = INFINITY;
         f64 max_err = -INFINITY;
@@ -785,18 +845,28 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
     }
 
 #ifdef _MAG_TRACK_MEM_USAGE
-    f64 pct_mem = mag_static_arena_max_ratio(&scratch) * 100.0;
-    b32 over_allocated = mag_static_arena_over_allocated(&scratch);
-    printf( "\n\n%s used %.2lf%% of scratch and scratch %s over allocated.\n\n\n",
-            __func__, pct_mem, over_allocated ? "***WAS***": "was not");
+    printf("\n\n");
+#endif
+    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
+    {
+
+#ifdef _MAG_TRACK_MEM_USAGE
+
+        f64 pct_mem = mag_static_arena_max_ratio(&scratches[cnt]) * 100.0;
+        b32 over_allocated = mag_static_arena_over_allocated(&scratches[cnt]);
+        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
+                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
+
 #endif
 
-    mag_static_arena_destroy(&scratch);
+        mag_static_arena_destroy(&scratches[cnt]);
+    }
 
-#undef NUM_TRIALS
 #undef NUM_MODELS
+
 }
 
+#undef NUM_TRIALS
 
 /*-------------------------------------------  Preconditioning Sampling  --------------------------------------------------*/
 
@@ -845,7 +915,7 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
                 starting_values,
                 perm);
 
-        bayla_preconditioning_sample(&args, &ran, scratch);
+        bayla_preconditioning_sample(&args, &ran, mag_static_arena_borrow(&scratch));
         COY_END_PROFILE(ap);
 
         ap = COY_START_PROFILE_BLOCK("Preconditioning.");
@@ -853,7 +923,7 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
         bayla_vegas_map_precondition(model, opts, samples, perm);
         COY_END_PROFILE(ap);
 
-        evidence[m] = bayla_calculate_evidence(model, opts, scratch);
+        evidence[m] = bayla_calculate_evidence(model, opts, mag_static_arena_borrow(&scratch));
         if(evidence[m].result.value.val > max_evidence)
         {
             max_evidence = evidence[m].result.value.val;
@@ -946,12 +1016,30 @@ BayLaModel pi_model =
         .user_data = NULL
     };
 
+typedef struct
+{
+    BayLaModel *model;
+    BayLaIntegratorOptions *opts;
+    MagStaticArena scratch;
+    BayLaEvidenceResult evidence;
+    f64 true_error;
+    f64 true_error_z_score;
+} TestEvidencePiThreadData;
+
+void
+test_evidence_pi_thread_func(void *data)
+{
+    TestEvidencePiThreadData *td = data;
+    td->evidence = bayla_calculate_evidence(td->model, td->opts, td->scratch);
+
+    td->true_error = bayla_log_value_map_out_of_log_domain(td->evidence.result.value) - ELK_PI;
+    td->true_error_z_score = td->true_error / bayla_log_value_map_out_of_log_domain(td->evidence.result.error);
+}
+
 static inline void
 test_evidence_pi(void)
 {
     CoyProfileAnchor ap = COY_START_PROFILE_FUNCTION;
-
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_KiB(512));
 
     char *names[] = {"Simple Monte Carlo", "MISER", "VEGAS", "MISER-VEGAS", "VEGAS+"};
 
@@ -1025,28 +1113,49 @@ test_evidence_pi(void)
         };
 
     _Static_assert(ECO_ARRAY_SIZE(opts) == ECO_ARRAY_SIZE(names), "Mismatched Arrays.");
+
+    TestEvidencePiThreadData tds[ECO_ARRAY_SIZE(opts)] = {0};
+    CoyThread threads[ECO_ARRAY_SIZE(opts)] = {0};
+    MagStaticArena scratches[ECO_ARRAY_SIZE(opts)] = {0};
+    for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
+    {
+        scratches[method] = mag_static_arena_allocate_and_create(ECO_KiB(512));
+    }
     
+    b32 success = true;
+    for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
+    {
+        tds[method].model = &pi_model;
+        tds[method].opts = &opts[method];
+        tds[method].scratch = mag_static_arena_borrow(&scratches[method]);
+
+        success &= coy_thread_create(&threads[method], test_evidence_pi_thread_func, &tds[method]);
+        Assert(success);
+    }
+
     printf("\nCalculating Pi as a test of the integrators.\n\n");
     printf("%20s - %8s ± %8s [%9s] %8s [%9s] %8s [ %8s ]\n",
             "Method", "Value", "Error", "Pct Err", "True Err", "Pct True", "Samples", "Samples Used");
+
     for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
     {
-        BayLaEvidenceResult evidence = bayla_calculate_evidence(&pi_model, &opts[method], scratch);
-        f64 true_error = bayla_log_value_map_out_of_log_domain(evidence.result.value) - ELK_PI;
-        f64 true_error_z_score = true_error / bayla_log_value_map_out_of_log_domain(evidence.result.error);
+        success = coy_thread_join(&threads[method]);
+        Assert(success);
+        coy_thread_destroy(&threads[method]);
 
         printf("%20s - %lf ± %lf [%8.4lf%%] %8.4lf [%8.4lf%%]",
                 names[method],
-                bayla_log_value_map_out_of_log_domain(evidence.result.value), 
-                bayla_log_value_map_out_of_log_domain(evidence.result.error),
-                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(evidence.result.error, evidence.result.value)),
-                true_error_z_score, true_error / ELK_PI * 100.0);
+                bayla_log_value_map_out_of_log_domain(tds[method].evidence.result.value), 
+                bayla_log_value_map_out_of_log_domain(tds[method].evidence.result.error),
+                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(
+                        tds[method].evidence.result.error, tds[method].evidence.result.value)),
+                tds[method].true_error_z_score, tds[method].true_error / ELK_PI * 100.0);
 
-        switch(evidence.strategy)
+        switch(tds[method].evidence.strategy)
         {
             case BAYLA_INTEGRATE_MONTE_CARLO:
             {
-                printf(" %8td [ %12td ]\n", evidence.total_samples, evidence.total_samples);
+                printf(" %8td [ %12td ]\n", tds[method].evidence.total_samples, tds[method].evidence.total_samples);
             } break;
 
             case BAYLA_INTEGRATE_VEGAS_PLUS:
@@ -1054,7 +1163,7 @@ test_evidence_pi(void)
             case BAYLA_INTEGRATE_MISER:
             case BAYLA_INTEGRATE_VEGAS_MISER:
             {
-                printf(" %8td [ %12td ]\n", evidence.total_samples, evidence.samples_used);
+                printf(" %8td [ %12td ]\n", tds[method].evidence.total_samples, tds[method].evidence.samples_used);
             } break;
 
             default: Panic();
@@ -1062,14 +1171,17 @@ test_evidence_pi(void)
     }
     printf("\n\n");
 
+    for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
+    {
 #ifdef _MAG_TRACK_MEM_USAGE
-    f64 pct_mem = mag_static_arena_max_ratio(&scratch) * 100.0;
-    b32 over_allocated = mag_static_arena_over_allocated(&scratch);
-    printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-            __func__, pct_mem, over_allocated ? "***WAS***": "was not");
+        f64 pct_mem = mag_static_arena_max_ratio(&scratches[method]) * 100.0;
+        b32 over_allocated = mag_static_arena_over_allocated(&scratches[method]);
+        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
+                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
 #endif
 
-    mag_static_arena_destroy(&scratch);
+        mag_static_arena_destroy(&scratches[method]);
+    }
 
     COY_END_PROFILE(ap);
 }
