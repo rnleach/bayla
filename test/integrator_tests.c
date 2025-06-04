@@ -352,54 +352,58 @@ test_integrator_ki(void)
         scratches[method] = mag_static_arena_allocate_and_create(ECO_KiB(512));
     }
     
-    b32 success = true;
-    for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
+    for(size np = 2; np <= ECO_ARRAY_SIZE(ki_min_parms); ++np)
     {
-        tds[method].model = ki_model;
-        tds[method].opts = opts[method];
-        tds[method].scratch = mag_static_arena_borrow(&scratches[method]);
-
-        success &= coy_thread_create(&threads[method], test_evidence_ki_thread_func, &tds[method]);
-        Assert(success);
-    }
-
-    printf("\nCalculating a known integral as a test of the integrators.\n");
-    printf("%20s - %8s ± %8s [%9s] %16s [%9s] %8s [ %8s ]\n",
-            "Method", "Value", "Error", "Pct Err", "True Err Z score", "Pct True", "Samples", "Samples Used");
-
-    for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
-    {
-        success = coy_thread_join(&threads[method]);
-        Assert(success);
-        coy_thread_destroy(&threads[method]);
-
-        printf("%20s - %lf ± %lf [%8.4lf%%] %16.4lf [%8.4lf%%]",
-                names[method],
-                bayla_log_value_map_out_of_log_domain(tds[method].evidence.result.value), 
-                bayla_log_value_map_out_of_log_domain(tds[method].evidence.result.error),
-                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(
-                        tds[method].evidence.result.error, tds[method].evidence.result.value)),
-                tds[method].true_error_z_score, tds[method].true_error_pct);
-
-        switch(tds[method].evidence.strategy)
+        b32 success = true;
+        for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
         {
-            case BAYLA_INTEGRATE_MONTE_CARLO:
-            {
-                printf(" %8td [ %12td ]\n", tds[method].evidence.total_samples, tds[method].evidence.total_samples);
-            } break;
+            tds[method].model = ki_model;
+            tds[method].model.n_parameters = np;
+            tds[method].opts = opts[method];
+            tds[method].scratch = mag_static_arena_borrow(&scratches[method]);
 
-            case BAYLA_INTEGRATE_VEGAS_PLUS:
-            case BAYLA_INTEGRATE_VEGAS:
-            case BAYLA_INTEGRATE_MISER:
-            case BAYLA_INTEGRATE_VEGAS_MISER:
-            {
-                printf(" %8td [ %12td ]\n", tds[method].evidence.total_samples, tds[method].evidence.samples_used);
-            } break;
-
-            default: Panic();
+            success &= coy_thread_create(&threads[method], test_evidence_ki_thread_func, &tds[method]);
+            Assert(success);
         }
+
+        printf("\nCalculating a known integral with %ld parameters as a test of the integrators.\n", np);
+        printf("%20s - %10s ± %8s [%9s] %16s [%9s] %8s [ %8s ]\n",
+                "Method", "Value", "Error", "Pct Err", "True Err Z score", "Pct True", "Samples", "Samples Used");
+
+        for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
+        {
+            success = coy_thread_join(&threads[method]);
+            Assert(success);
+            coy_thread_destroy(&threads[method]);
+
+            printf("%20s - %10lf ± %8lf [%8.4lf%%] %16.4lf [%8.4lf%%]",
+                    names[method],
+                    bayla_log_value_map_out_of_log_domain(tds[method].evidence.result.value), 
+                    bayla_log_value_map_out_of_log_domain(tds[method].evidence.result.error),
+                    100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(
+                            tds[method].evidence.result.error, tds[method].evidence.result.value)),
+                    tds[method].true_error_z_score, tds[method].true_error_pct);
+
+            switch(tds[method].evidence.strategy)
+            {
+                case BAYLA_INTEGRATE_MONTE_CARLO:
+                {
+                    printf(" %8td [ %12td ]\n", tds[method].evidence.total_samples, tds[method].evidence.total_samples);
+                } break;
+
+                case BAYLA_INTEGRATE_VEGAS_PLUS:
+                case BAYLA_INTEGRATE_VEGAS:
+                case BAYLA_INTEGRATE_MISER:
+                case BAYLA_INTEGRATE_VEGAS_MISER:
+                {
+                    printf(" %8td [ %12td ]\n", tds[method].evidence.total_samples, tds[method].evidence.samples_used);
+                } break;
+
+                default: Panic();
+            }
+        }
+        printf("\n\n");
     }
-    printf("\n\n");
 
     for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
     {
