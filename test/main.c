@@ -12,6 +12,7 @@
 #include "../lib/bayla.h"
 
 #include "log_math.c"
+#include "integrator_tests.c"
 #include "evidence_test.c"
 
 int
@@ -21,6 +22,7 @@ main(int argc, char *argv[])
     printf("  ---------- Starting Tests ----------\n");
 
     all_log_math_tests();
+    all_integrator_tests();
     all_evidence_tests();
 
     printf("  ---------- Finished Tests ----------\n");
