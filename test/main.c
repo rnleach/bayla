@@ -2,7 +2,7 @@
 #include <tgmath.h>
 #include <stdio.h>
 
-// We must have asserts working for the tests to work.
+/* We must have asserts working for the tests to work. */
 #ifdef NDEBUG
 #    undef NDEBUG
 #endif

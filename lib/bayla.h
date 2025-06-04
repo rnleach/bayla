@@ -238,7 +238,6 @@ API BayLaEvidenceResult bayla_calculate_evidence(
  *                                                  Sample Distributions
  *-------------------------------------------------------------------------------------------------------------------------*/
 
-/* TODO: Notes on the implementation, e.g. NUTS or Metropolis-Hastings. */
 typedef struct
 {
     size n_samples;                  /* The number of samples to take.                                                    */
@@ -255,6 +254,7 @@ API BayLaPreconditioningSamplerArgs bayla_preconditioning_sampler_args_allocate_
         f64 *starting_params,
         MagStaticArena *arena);
 
+/* This uses a simple Metropolis-Hastings algorithm to sample the posterior. */
 API void bayla_preconditioning_sample(
         BayLaPreconditioningSamplerArgs *args,
         ElkRandomState *state,
@@ -264,8 +264,17 @@ API void bayla_preconditioning_sample(
  *                                                    Implementations
  *-------------------------------------------------------------------------------------------------------------------------*/
 
-API BayLaLogValue bayla_log_value_create(f64 log_domain_value) { return (BayLaLogValue){.val = log_domain_value }; }
-API f64 bayla_log_value_map_out_of_log_domain(BayLaLogValue log_val) { return exp(log_val.val); }
+API BayLaLogValue
+bayla_log_value_create(f64 log_domain_value)
+{
+    return (BayLaLogValue){.val = log_domain_value };
+}
+
+API f64 
+bayla_log_value_map_out_of_log_domain(BayLaLogValue log_val) 
+{ 
+    return exp(log_val.val); 
+}
 
 API BayLaLogValue 
 bayla_log_value_map_into_log_domain(f64 non_log_domain_value)
@@ -273,8 +282,8 @@ bayla_log_value_map_into_log_domain(f64 non_log_domain_value)
     return (BayLaLogValue){.val = log(non_log_domain_value) };
 }
 
-
-API BayLaLogValue bayla_log_value_add(BayLaLogValue left, BayLaLogValue right)
+API BayLaLogValue 
+bayla_log_value_add(BayLaLogValue left, BayLaLogValue right)
 {
     return (BayLaLogValue){.val = bayla_logsumexp(left.val, right.val)};
 }
@@ -292,7 +301,8 @@ bayla_log_value_subtract(BayLaLogValue left, BayLaLogValue right)
     return (BayLaLogValue){.val = val };
 }
 
-API BayLaLogValue bayla_log_value_multiply(BayLaLogValue left, BayLaLogValue right)
+API BayLaLogValue
+bayla_log_value_multiply(BayLaLogValue left, BayLaLogValue right)
 {
     return (BayLaLogValue){.val = left.val + right.val};
 }
@@ -303,7 +313,8 @@ bayla_log_value_divide(BayLaLogValue numerator, BayLaLogValue denominator)
     return (BayLaLogValue){.val = numerator.val - denominator.val};
 }
 
-API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val)
+API BayLaLogValue 
+bayla_log_value_reciprocal(BayLaLogValue log_val)
 {
     return (BayLaLogValue){.val = -log_val.val};
 }
@@ -359,7 +370,7 @@ bayla_logsumexp(f64 x, f64 y)
 API f64 
 bayla_logsumexp_list(size nvals, f64 *vals)
 {
-    /* Use a two pass algorithm */
+    /* Use a two pass algorithm, first find the max, then scale and apply addition at higher precision. */
     f64 max = -INFINITY;
     for(size i = 0; i < nvals; ++i)
     {
@@ -426,7 +437,7 @@ bayla_preconditioning_sampler_args_allocate_and_create(
         f64 *starting_params,
         MagStaticArena *arena)
 {
-    size N = model->n_parameters;
+    size const N = model->n_parameters;
 
     /* Need to allocate space for output, everything else should already exist. */
     BayLaParametersSamples *samples = eco_malloc(arena, BayLaParametersSamples);
@@ -1005,11 +1016,7 @@ bayla_vegas_map_refine(BayLaVegasMap *map, MagStaticArena scratch)
 }
 
 API void 
-bayla_vegas_map_precondition(
-        BayLaModel *model,
-        BayLaIntegratorOptions *opts,
-        BayLaParametersSamples *samples,
-        MagStaticArena *perm)
+bayla_vegas_map_precondition(BayLaModel *model, BayLaIntegratorOptions *opts, BayLaParametersSamples *samples, MagStaticArena *perm)
 {
     size ndim = model->n_parameters;
     size nsamples = pak_len(&samples->samples_ledger);
@@ -1017,57 +1024,53 @@ bayla_vegas_map_precondition(
     f64 *min_vals = model->min_parameter_vals;
     f64 *max_vals = model->max_parameter_vals;
 
-    BayLaVegasMap **mapp = NULL;
+    /* This is the map we will precondition. It needs to be inserted into the options struct right after creation. */
+    BayLaVegasMap *map = NULL;
+
+    /* Unpack some more parameters from the options struct. */
     size n_grid = 0;
     f64 alpha = 0.0;
     switch(opts->strategy)
     {
         case BAYLA_INTEGRATE_VEGAS:
-        {
-            n_grid = opts->vegas.num_grid_cells;
-            alpha = opts->vegas.alpha;
-            mapp = &opts->vegas.map;
-        } break;
+            {
+                n_grid = opts->vegas.num_grid_cells;
+                alpha = opts->vegas.alpha;
+                map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, perm);
+                opts->vegas.map = map;
+            } break;
 
         case BAYLA_INTEGRATE_VEGAS_PLUS:
-        {
-            n_grid = opts->vegas_plus.num_grid_cells;
-            alpha = opts->vegas_plus.alpha;
-            mapp = &opts->vegas_plus.map;
-        } break;
+            {
+                n_grid = opts->vegas_plus.num_grid_cells;
+                alpha = opts->vegas_plus.alpha;
+                map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, perm);
+                opts->vegas_plus.map = map;
+            } break;
 
         case BAYLA_INTEGRATE_VEGAS_MISER:
-        {
-            n_grid = opts->vegas_miser.num_grid_cells;
-            alpha = opts->vegas_miser.alpha;
-            mapp = &opts->vegas_miser.map;
-        } break;
+            {
+                n_grid = opts->vegas_miser.num_grid_cells;
+                alpha = opts->vegas_miser.alpha;
+                map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, perm);
+                opts->vegas_miser.map = map;
+            } break;
 
-        default: Panic(); /* Should never get here. */
+        default:
+            Panic(); /* Should never get here, as other strategies do NOT use a map. */
     }
 
-    BayLaVegasMap *map = bayla_vegas_map_create(ndim, n_grid, alpha, max_vals, min_vals, perm);
-    *mapp = map; /* Ties this into options. Convoluted, I know. */
-
-    f64 *delta_xs = map->delta_xs;
-
     /* From here on out use the remaining space of perm as a scratch arena, but I can NEVER use perm again! */
-    MagStaticArena scratch_ = *perm;
+    MagStaticArena scratch_ = mag_static_arena_borrow(perm);
     MagStaticArena *scratch = &scratch_;
     perm = NULL; /* CANNOT USE perm AGAIN FOR PERMANENT STORAGE. */
 
-    size *iy = map->iy;
-    size *n_s = map->n_s;
-    f64 *ds = (f64*)map->ds;
-    BayLaLogValue *log_ds = (BayLaLogValue*)map->ds;
-
-    Assert(iy && n_s && ds && log_ds);
+    f64 *delta_xs = map->delta_xs;
 
     /* Some stuff to help decide when to stop. */
     size const max_trials = 1000;
     f64 const stopping_max_delta_delta_x_ratio = 1.0e-2;
     f64 *previous_delta_xs = eco_nmalloc(scratch, ndim * n_grid, f64);
-    Assert(previous_delta_xs);
 
     f64 iter_alpha = alpha;
     for(size trials = 0; trials < max_trials; ++trials)
