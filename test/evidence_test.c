@@ -1069,7 +1069,7 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
     ElkRandomState ran = elk_random_state_create(11);
     initialize_global_data();
 
-    f64 starting_values[NUM_MODELS] = {0};
+    f64 starting_values[7] = {0};
 
     f64 max_evidence = -INFINITY;
     size max_evidence_index = -1;
@@ -1079,6 +1079,7 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
 
         f64 *min_vals = model->min_parameter_vals;
         f64 *max_vals = model->max_parameter_vals;
+        Assert(model->n_parameters <= ECO_ARRAY_SIZE(starting_values));
         for(size n = 0; n < model->n_parameters; ++n)
         {
             starting_values[n] = (min_vals[n] + max_vals[n]) / 2.0;
