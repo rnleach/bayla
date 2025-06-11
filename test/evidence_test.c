@@ -938,8 +938,6 @@ test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegr
         BayLaParametersSamples *samples = args.output;
         bayla_vegas_map_precondition(model, opts, samples, &perm);
 
-        /*-----------------------------------*/
-
         EvidenceCalcThreadData tds[NUM_TRIALS] = {0};
         CoyThread threads[NUM_TRIALS] = {0};
 
