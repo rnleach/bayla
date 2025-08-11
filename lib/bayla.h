@@ -834,7 +834,7 @@ bayla_vegas_map_evaluate(
     }
 }
 
-#define TINY 1.0e-100
+#define TINY 1.0e-240
 
 API void
 bayla_vegas_map_apply_sample(BayLaVegasMap *map, f64 *xs_input, BayLaLogValue log_prob)
