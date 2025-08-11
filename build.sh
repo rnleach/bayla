@@ -21,7 +21,7 @@ LDLIBS="-lm"
 if [ "$#" -gt 0 -a "$1" = "debug" ]
 then
     echo "debug build"
-    CFLAGS="$CFLAGS -O0 -DCOY_PROFILE -D_MAG_TRACK_MEM_USAGE"
+    CFLAGS="$CFLAGS -O0 -DCOY_PROFILE"
     CFLAGS="$CFLAGS -g -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function"
 elif [ "$#" -gt 0 -a "$1" != "clean" -o \( "$#" = 0 \) ]
 then

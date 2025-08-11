@@ -132,6 +132,27 @@ static inline void pak_array_ledger_reset(PakArrayLedger *array);
 static inline void pak_array_ledger_set_capacity(PakArrayLedger *array, size capacity);
 
 /*---------------------------------------------------------------------------------------------------------------------------
+ *                                                      Stack Ledger
+ *---------------------------------------------------------------------------------------------------------------------------
+ *
+ * Mind the PAK_COLLECTION_FULL and PAK_COLLECTION_EMPTY return values.
+ */
+typedef struct 
+{
+    size capacity;
+    size length;
+} PakStackLedger;
+
+static inline PakStackLedger pak_stack_ledger_create(size capacity);
+static inline b32 pak_stack_ledger_full(PakStackLedger *stack);
+static inline b32 pak_stack_ledger_empty(PakStackLedger *stack);
+static inline size pak_stack_ledger_push_index(PakStackLedger *stack);
+static inline size pak_stack_ledger_pop_index(PakStackLedger *stack);
+static inline size pak_stack_ledger_len(PakStackLedger const *stack);
+static inline void pak_stack_ledger_reset(PakStackLedger *stack);
+static inline void pak_stack_ledger_set_capacity(PakStackLedger *stack, size capacity);
+
+/*---------------------------------------------------------------------------------------------------------------------------
  *                                         
  *                                                  Unordered Collections
  *
@@ -276,7 +297,7 @@ static inline void *pak_hash_set_value_iter_next(PakHashSet *set, PakHashSetIter
  *
  * The sort requires extra memory that depends on the size of the list being sorted, so the user must provide that. In order
  * to ensure proper alignment and size, the user must provide the scratch buffer. Probably using an arena with 
- * eco_nmalloc() to create a buffer and then freeing it after the sort would be the most efficient way to handle that.
+ * eco_arena_nmalloc() to create a buffer and then freeing it after the sort would be the most efficient way to handle that.
  *
  * The API is set up for sorting an array of structures. The 'offset' argument is the offset in bytes into the structure 
  * where the sort key can be found. The 'stride' argument is just the size of the structures so we know how to iterate the
@@ -324,7 +345,7 @@ pak_string_interner_create(i8 size_exp, MagAllocator *storage)
     Assert(size_exp > 0 && size_exp <= 31); /* Come on, 2^31 is HUGE */
 
     usize const handles_len = (usize)(1 << size_exp);
-    PakStringInternerHandle *handles = eco_nmalloc(storage, handles_len, PakStringInternerHandle);
+    PakStringInternerHandle *handles = eco_arena_nmalloc(storage, handles_len, PakStringInternerHandle);
     PanicIf(!handles);
 
     return (PakStringInterner)
@@ -369,7 +390,7 @@ pak_string_interner_expand_table(PakStringInterner *interner)
     usize const handles_len = (usize)(1 << size_exp);
     usize const new_handles_len = (usize)(1 << new_size_exp);
 
-    PakStringInternerHandle *new_handles = eco_nmalloc(interner->storage, new_handles_len, PakStringInternerHandle);
+    PakStringInternerHandle *new_handles = eco_arena_nmalloc(interner->storage, new_handles_len, PakStringInternerHandle);
     PanicIf(!new_handles);
 
     for (u32 i = 0; i < handles_len; i++) 
@@ -430,7 +451,7 @@ pak_string_interner_intern(PakStringInterner *interner, ElkStr str)
             /* empty, insert here if room in the table of handles. Check for room first! */
             if (pak_hash_table_large_enough(interner->num_handles, interner->size_exp))
             {
-                char *dest = eco_nmalloc(interner->storage, str.len + 1, char);
+                char *dest = eco_arena_nmalloc(interner->storage, str.len + 1, char);
                 PanicIf(!dest);
                 ElkStr interned_str = elk_str_copy(str.len + 1, dest, str);
 
@@ -577,13 +598,73 @@ pak_array_ledger_set_capacity(PakArrayLedger *array, size capacity)
     array->capacity = capacity;
 }
 
+static inline PakStackLedger 
+pak_stack_ledger_create(size capacity)
+{
+    Assert(capacity > 0);
+    return (PakStackLedger)
+    {
+        .capacity = capacity,
+        .length = 0
+    };
+}
+
+static inline b32 
+pak_stack_ledger_full(PakStackLedger *stack)
+{
+    return stack->length == stack->capacity;
+}
+
+static inline b32 
+pak_stack_ledger_empty(PakStackLedger *stack)
+{
+    return stack->length == 0;
+}
+
+static inline size 
+pak_stack_ledger_push_index(PakStackLedger *stack)
+{
+    if(pak_stack_ledger_full(stack)) { return PAK_COLLECTION_FULL; }
+
+    size idx = stack->length;
+    stack->length += 1;
+    return idx;
+}
+
+static inline size 
+pak_stack_ledger_pop_index(PakStackLedger *stack)
+{
+    if(pak_stack_ledger_empty(stack)) { return PAK_COLLECTION_EMPTY; }
+
+    return --stack->length;
+}
+
+static inline size 
+pak_stack_ledger_len(PakStackLedger const *stack)
+{
+    return stack->length;
+}
+
+static inline void 
+pak_stack_ledger_reset(PakStackLedger *stack)
+{
+    stack->length = 0;
+}
+
+static inline void 
+pak_stack_ledger_set_capacity(PakStackLedger *stack, size capacity)
+{
+    Assert(capacity > 0);
+    stack->capacity = capacity;
+}
+
 static PakHashMap 
 pak_hash_map_create(i8 size_exp, ElkSimpleHash key_hash, ElkEqFunction key_eq, MagAllocator *alloc)
 {
     Assert(size_exp > 0 && size_exp <= 31); /* Come on, 31 is HUGE */
 
     size const handles_len = (size)(1 << size_exp);
-    PakHashMapHandle *handles = eco_nmalloc(alloc, handles_len, PakHashMapHandle);
+    PakHashMapHandle *handles = eco_arena_nmalloc(alloc, handles_len, PakHashMapHandle);
     PanicIf(!handles);
 
     return (PakHashMap)
@@ -612,7 +693,7 @@ pak_hash_table_expand(PakHashMap *map)
     size const handles_len = (size)(1 << size_exp);
     size const new_handles_len = (size)(1 << new_size_exp);
 
-    PakHashMapHandle *new_handles = eco_nmalloc(map->alloc, new_handles_len, PakHashMapHandle);
+    PakHashMapHandle *new_handles = eco_arena_nmalloc(map->alloc, new_handles_len, PakHashMapHandle);
     PanicIf(!new_handles);
 
     for (u32 i = 0; i < handles_len; i++) 
@@ -757,7 +838,7 @@ pak_str_map_create(i8 size_exp, MagAllocator *alloc)
     Assert(size_exp > 0 && size_exp <= 31); /* Come on, 31 is HUGE */
 
     size const handles_len = (size)(1 << size_exp);
-    PakStrMapHandle *handles = eco_nmalloc(alloc, handles_len, PakStrMapHandle);
+    PakStrMapHandle *handles = eco_arena_nmalloc(alloc, handles_len, PakStrMapHandle);
     PanicIf(!handles);
 
     return (PakStrMap)
@@ -784,7 +865,7 @@ pak_str_table_expand(PakStrMap *map)
     size const handles_len = (size)(1 << size_exp);
     size const new_handles_len = (size)(1 << new_size_exp);
 
-    PakStrMapHandle *new_handles = eco_nmalloc(map->alloc, new_handles_len, PakStrMapHandle);
+    PakStrMapHandle *new_handles = eco_arena_nmalloc(map->alloc, new_handles_len, PakStrMapHandle);
     PanicIf(!new_handles);
 
     for (u32 i = 0; i < handles_len; i++) 
@@ -985,7 +1066,7 @@ pak_hash_set_create(i8 size_exp, ElkSimpleHash val_hash, ElkEqFunction val_eq, M
     Assert(size_exp > 0 && size_exp <= 31); /* Come on, 31 is HUGE */
 
     size const handles_len = (size)(1 << size_exp);
-    PakHashSetHandle *handles = eco_nmalloc(alloc, handles_len, PakHashSetHandle);
+    PakHashSetHandle *handles = eco_arena_nmalloc(alloc, handles_len, PakHashSetHandle);
     PanicIf(!handles);
 
     return (PakHashSet)
@@ -1014,7 +1095,7 @@ pak_hash_set_expand(PakHashSet *set)
     size const handles_len = (size)(1 << size_exp);
     size const new_handles_len = (size)(1 << new_size_exp);
 
-    PakHashSetHandle *new_handles = eco_nmalloc(set->alloc, new_handles_len, PakHashSetHandle);
+    PakHashSetHandle *new_handles = eco_arena_nmalloc(set->alloc, new_handles_len, PakHashSetHandle);
     PanicIf(!new_handles);
 
     for (u32 i = 0; i < handles_len; i++) 

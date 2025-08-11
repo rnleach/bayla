@@ -16,12 +16,12 @@ IF "%1"=="debug" (GOTO Debug) ELSE (GOTO Release)
 
 :Debug
 @echo Debug Build
-SET flags=/Od /Zi /DCOY_PROFILE /D_MAG_TRACK_MEM_USAGE
+SET flags=/Od /Zi /DCOY_PROFILE
 GOTO Operation
 
 :Release
 @echo Release Build
-SET flags=/O2 /DNDEBUG /DCOY_PROFILE /D_MAG_TRACK_MEM_USAGE
+SET flags=/O2 /DNDEBUG /DCOY_PROFILE
 GOTO Operation
 
 rem

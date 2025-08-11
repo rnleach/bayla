@@ -139,7 +139,7 @@ test_integrator_pi(void)
     {
         tds[method].model = &pi_model;
         tds[method].opts = &opts[method];
-        tds[method].scratch = mag_static_arena_borrow(&scratches[method]);
+        tds[method].scratch = scratches[method];
 
         success &= coy_thread_create(&threads[method], test_evidence_pi_thread_func, &tds[method]);
         Assert(success);
@@ -185,13 +185,6 @@ test_integrator_pi(void)
 
     for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
     {
-#ifdef _MAG_TRACK_MEM_USAGE
-        f64 pct_mem = mag_static_arena_max_ratio(&scratches[method]) * 100.0;
-        b32 over_allocated = mag_static_arena_over_allocated(&scratches[method]);
-        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-#endif
-
         mag_static_arena_destroy(&scratches[method]);
     }
 }
@@ -415,7 +408,7 @@ test_integrator_ki(void)
         /* Do the preconditioning. */
         for(size other_idx = 0; other_idx < ECO_ARRAY_SIZE(precond_opts); ++other_idx)
         {
-            eco_reset(&perms[other_idx]);
+            eco_arena_reset(&perms[other_idx]);
             BayLaModel model = ki_model;
             model.n_parameters = np;
 
@@ -434,7 +427,7 @@ test_integrator_ki(void)
                     starting_values,
                     &perms[other_idx]);
 
-            bayla_preconditioning_sample(&args, &ran, mag_static_arena_borrow(&scratches[0]));
+            bayla_preconditioning_sample(&args, &ran, scratches[0]);
 
             BayLaParametersSamples *samples = args.output;
             bayla_vegas_map_precondition(&model, &precond_opts[other_idx], samples, &perms[other_idx]);
@@ -455,7 +448,7 @@ test_integrator_ki(void)
                 tds[method].opts = precond_opts[method - ECO_ARRAY_SIZE(opts)];
             }
 
-            tds[method].scratch = mag_static_arena_borrow(&scratches[method]);
+            tds[method].scratch = scratches[method];
 
             success &= coy_thread_create(&threads[method], test_evidence_ki_thread_func, &tds[method]);
             Assert(success);
@@ -512,13 +505,6 @@ test_integrator_ki(void)
 
     for(size method = 0; method < ECO_ARRAY_SIZE(opts); ++method)
     {
-#ifdef _MAG_TRACK_MEM_USAGE
-        f64 pct_mem = mag_static_arena_max_ratio(&scratches[method]) * 100.0;
-        b32 over_allocated = mag_static_arena_over_allocated(&scratches[method]);
-        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-#endif
-
         mag_static_arena_destroy(&scratches[method]);
     }
 }

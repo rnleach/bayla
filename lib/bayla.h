@@ -440,9 +440,9 @@ bayla_preconditioning_sampler_args_allocate_and_create(
     size const N = model->n_parameters;
 
     /* Need to allocate space for output, everything else should already exist. */
-    BayLaParametersSamples *samples = eco_malloc(arena, BayLaParametersSamples);
-    f64 *parameter_samples = eco_nmalloc(arena, N * n_samples, f64);
-    BayLaLogValue *probs = eco_nmalloc(arena, n_samples, BayLaLogValue);
+    BayLaParametersSamples *samples = eco_arena_malloc(arena, BayLaParametersSamples);
+    f64 *parameter_samples = eco_arena_nmalloc(arena, N * n_samples, f64);
+    BayLaLogValue *probs = eco_arena_nmalloc(arena, n_samples, BayLaLogValue);
     Assert(probs && parameter_samples && samples);
 
     PakArrayLedger ledger = pak_array_ledger_create(n_samples);
@@ -481,10 +481,10 @@ bayla_preconditioning_sample(BayLaPreconditioningSamplerArgs *args, ElkRandomSta
     f64 *min_parms = args->model->min_parameter_vals;
     f64 *max_parms = args->model->max_parameter_vals;
 
-    f64 *ms = eco_nmalloc(&scratch, N, f64);
-    f64 *ss = eco_nmalloc(&scratch, N, f64);
-    f64 *p0 = eco_nmalloc(&scratch, N, f64);
-    f64 *p = eco_nmalloc(&scratch, N, f64);
+    f64 *ms = eco_arena_nmalloc(&scratch, N, f64);
+    f64 *ss = eco_arena_nmalloc(&scratch, N, f64);
+    f64 *p0 = eco_arena_nmalloc(&scratch, N, f64);
+    f64 *p = eco_arena_nmalloc(&scratch, N, f64);
 
     Assert(ms && ss && p0 && p);
     memcpy(ms, starting_params, sizeof(f64) * N);
@@ -614,7 +614,7 @@ bayla_simple_monte_carlo_integrate(BayLaModel const *model, BayLaIntegratorOptio
     BayLaLogValue log_integral = bayla_log_value_map_into_log_domain(0);
     BayLaLogValue log_integral_error = bayla_log_value_map_into_log_domain(0);
 
-    f64 *params = eco_nmalloc(&scratch, n_params, f64);
+    f64 *params = eco_arena_nmalloc(&scratch, n_params, f64);
     PanicIf(!params);
 
     f64 proportional_error = INFINITY;
@@ -708,7 +708,7 @@ bayla_vegas_map_create(
         f64 const *min_vals,
         MagStaticArena *perm)
 {
-    BayLaVegasMap *map = eco_malloc(perm, BayLaVegasMap);
+    BayLaVegasMap *map = eco_arena_malloc(perm, BayLaVegasMap);
     
     map->ndim = ndim;
     map->n_grid = n_grid;
@@ -716,13 +716,13 @@ bayla_vegas_map_create(
     map->max_vals = max_vals;
     map->min_vals = min_vals;
 
-    map->n_s = eco_nmalloc(perm, ndim * n_grid, size);
-    map->iy = eco_nmalloc(perm, ndim, size);
+    map->n_s = eco_arena_nmalloc(perm, ndim * n_grid, size);
+    map->iy = eco_arena_nmalloc(perm, ndim, size);
 
-    map->xs = eco_nmalloc(perm, ndim * (n_grid + 1), f64);
-    map->delta_xs = eco_nmalloc(perm, ndim * (n_grid + 1), f64);
+    map->xs = eco_arena_nmalloc(perm, ndim * (n_grid + 1), f64);
+    map->delta_xs = eco_arena_nmalloc(perm, ndim * (n_grid + 1), f64);
 
-    map->ds = eco_nmalloc(perm, ndim * n_grid, BayLaDualDomainValue);
+    map->ds = eco_arena_nmalloc(perm, ndim * n_grid, BayLaDualDomainValue);
 
     Assert(map->n_s && map->iy && map->xs && map->delta_xs && map->ds);
 
@@ -753,7 +753,7 @@ bayla_vegas_map_create(
 API BayLaVegasMap *
 bayla_vegas_map_deep_copy(BayLaVegasMap *src, MagStaticArena *perm)
 {
-    BayLaVegasMap *map = eco_malloc(perm, BayLaVegasMap);
+    BayLaVegasMap *map = eco_arena_malloc(perm, BayLaVegasMap);
     
     map->ndim = src->ndim;
     map->n_grid = src->n_grid;
@@ -761,17 +761,17 @@ bayla_vegas_map_deep_copy(BayLaVegasMap *src, MagStaticArena *perm)
     map->max_vals = src->max_vals;
     map->min_vals = src->min_vals;
 
-    map->n_s = eco_nmalloc(perm, map->ndim * map->n_grid, size);
+    map->n_s = eco_arena_nmalloc(perm, map->ndim * map->n_grid, size);
     memcpy(map->n_s, src->n_s, map->ndim * map->n_grid * sizeof(size));
-    map->iy = eco_nmalloc(perm, map->ndim, size);
+    map->iy = eco_arena_nmalloc(perm, map->ndim, size);
     memcpy(map->iy, src->iy, map->ndim * sizeof(size));
 
-    map->xs = eco_nmalloc(perm, map->ndim * (map->n_grid + 1), f64);
+    map->xs = eco_arena_nmalloc(perm, map->ndim * (map->n_grid + 1), f64);
     memcpy(map->xs, src->xs, map->ndim * (map->n_grid + 1) * sizeof(f64));
-    map->delta_xs = eco_nmalloc(perm, map->ndim * (map->n_grid + 1), f64);
+    map->delta_xs = eco_arena_nmalloc(perm, map->ndim * (map->n_grid + 1), f64);
     memcpy(map->delta_xs, src->delta_xs, map->ndim * (map->n_grid + 1) * sizeof(f64));
 
-    map->ds = eco_nmalloc(perm, map->ndim * map->n_grid, BayLaDualDomainValue);
+    map->ds = eco_arena_nmalloc(perm, map->ndim * map->n_grid, BayLaDualDomainValue);
     memcpy(map->ds, src->ds, map->ndim * map->n_grid * sizeof(BayLaDualDomainValue));
 
     Assert(map->n_s && map->iy && map->xs && map->delta_xs && map->ds);
@@ -791,7 +791,7 @@ bayla_vegas_map_evaluate(
     /* Take input y and calculate fx*jy and return that. Also accumulate necessary information in state variables for the
      * next call to refine the mesh.
      */
-    f64 *x = eco_nmalloc(&scratch, map->ndim, f64);
+    f64 *x = eco_arena_nmalloc(&scratch, map->ndim, f64);
     f64 jy = 1.0;
 
     /* Transform from y-space to x-space and calculate the Jacobian */
@@ -935,8 +935,8 @@ bayla_vegas_map_refine(BayLaVegasMap *map, MagStaticArena scratch)
 
     f64 *ds = (f64*)log_ds; /* Convenience after conversion to the linear domain. */
 
-    f64 *old_ds = eco_nmalloc(&scratch, n_grid, f64);
-    f64 *old_xs = eco_nmalloc(&scratch, n_grid + 1, f64);
+    f64 *old_ds = eco_arena_nmalloc(&scratch, n_grid, f64);
+    f64 *old_xs = eco_arena_nmalloc(&scratch, n_grid + 1, f64);
 
     PanicIf(!(old_ds && old_xs));
 
@@ -1061,7 +1061,7 @@ bayla_vegas_map_precondition(BayLaModel *model, BayLaIntegratorOptions *opts, Ba
     }
 
     /* From here on out use the remaining space of perm as a scratch arena, but I can NEVER use perm again! */
-    MagStaticArena scratch_ = mag_static_arena_borrow(perm);
+    MagStaticArena scratch_ = *perm;
     MagStaticArena *scratch = &scratch_;
     perm = NULL; /* CANNOT USE perm AGAIN FOR PERMANENT STORAGE. */
 
@@ -1070,7 +1070,7 @@ bayla_vegas_map_precondition(BayLaModel *model, BayLaIntegratorOptions *opts, Ba
     /* Some stuff to help decide when to stop. */
     size const max_trials = 1000;
     f64 const stopping_max_delta_delta_x_ratio = 1.0e-2;
-    f64 *previous_delta_xs = eco_nmalloc(scratch, ndim * n_grid, f64);
+    f64 *previous_delta_xs = eco_arena_nmalloc(scratch, ndim * n_grid, f64);
 
     f64 iter_alpha = alpha;
     for(size trials = 0; trials < max_trials; ++trials)
@@ -1324,14 +1324,14 @@ bayla_vegas_integrate(BayLaModel const *model, BayLaIntegratorOptions *opts, Mag
 
     /* Allocate some workspace memory. */
     MagStaticArena *scratch = &scratch_;
-    BayLaLogValue *log_integral = eco_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayLaLogValue);
-    BayLaLogValue *log_sigma = eco_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayLaLogValue);
+    BayLaLogValue *log_integral = eco_arena_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayLaLogValue);
+    BayLaLogValue *log_sigma = eco_arena_nmalloc(scratch, max_total_samples / samples_per_refinement + 1, BayLaLogValue);
 
-    f64 *x = eco_nmalloc(scratch, ndim, f64);
-    f64 *y = eco_nmalloc(scratch, ndim, f64);
+    f64 *x = eco_arena_nmalloc(scratch, ndim, f64);
+    f64 *y = eco_arena_nmalloc(scratch, ndim, f64);
 
-    BayLaLogValue *log_fx_jys = eco_nmalloc(scratch, samples_per_refinement, BayLaLogValue);
-    BayLaLogValue *log_fx_jy_sqs = eco_nmalloc(scratch, samples_per_refinement, BayLaLogValue);
+    BayLaLogValue *log_fx_jys = eco_arena_nmalloc(scratch, samples_per_refinement, BayLaLogValue);
+    BayLaLogValue *log_fx_jy_sqs = eco_arena_nmalloc(scratch, samples_per_refinement, BayLaLogValue);
 
     PanicIf(!(x && y && log_fx_jys && log_fx_jy_sqs));
 
@@ -1439,7 +1439,7 @@ bayla_vegas_plus_stratification_params_create(size const samples_per_iter, size 
 
     size n_samples_per_hypercube = samples_per_iter / n_hypercubes;
 
-    BayLaHyperCube *cubes = eco_nmalloc(perm, n_hypercubes, BayLaHyperCube);
+    BayLaHyperCube *cubes = eco_arena_nmalloc(perm, n_hypercubes, BayLaHyperCube);
     for(size h = 0; h < n_hypercubes; ++h)
     {
         cubes[h] = (BayLaHyperCube){ .n_cube_samples = n_samples_per_hypercube }; /*Leave accumulators zero initialized.*/
@@ -1549,7 +1549,7 @@ bayla_vegas_plus_refine_sampling_stratification(
 #pragma warning(disable:4244)
     size n_hypercubes = strat_params->n_hypercubes;
 
-    BayLaDualDomainValue *ds = eco_nmalloc(&scratch, n_hypercubes, BayLaDualDomainValue);
+    BayLaDualDomainValue *ds = eco_arena_nmalloc(&scratch, n_hypercubes, BayLaDualDomainValue);
 
     for(size h = 0; h < n_hypercubes; ++h)
     {
@@ -1635,13 +1635,13 @@ bayla_vegas_plus_integrate(BayLaModel const *model, BayLaIntegratorOptions *opts
 
     /* Allocate some workspace memory. */
     MagStaticArena *scratch = &scratch_;
-    BayLaLogValue *log_integral = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
-    BayLaLogValue *log_sigma = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
-    size *samples_per_iter = eco_nmalloc(scratch, max_iterations, size);
+    BayLaLogValue *log_integral = eco_arena_nmalloc(scratch, max_iterations, BayLaLogValue);
+    BayLaLogValue *log_sigma = eco_arena_nmalloc(scratch, max_iterations, BayLaLogValue);
+    size *samples_per_iter = eco_arena_nmalloc(scratch, max_iterations, size);
     PakArrayLedger iter_ledger = pak_array_ledger_create(max_iterations);
 
-    f64 *x = eco_nmalloc(scratch, ndim, f64);
-    f64 *y = eco_nmalloc(scratch, ndim, f64);
+    f64 *x = eco_arena_nmalloc(scratch, ndim, f64);
+    f64 *y = eco_arena_nmalloc(scratch, ndim, f64);
 
     PanicIf(!(x && y));
 
@@ -1778,7 +1778,7 @@ bayla_miser_integrate_inner(
     BayLaLogValue const log_tiny = bayla_log_value_map_into_log_domain(TINY);
     size ndim = args.ndim;
 
-    f64 *lengths = eco_nmalloc(&scratch, ndim, f64);
+    f64 *lengths = eco_arena_nmalloc(&scratch, ndim, f64);
     for(size d = 0; d < ndim; ++d)
     {
         lengths[d] = (max_xs[d] - min_xs[d]);
@@ -1788,7 +1788,7 @@ bayla_miser_integrate_inner(
     {
         /* Too few points left to subdivide, use a simple Monte Carlo method. */
 
-        f64 *xs = eco_nmalloc(&scratch, ndim, f64);
+        f64 *xs = eco_arena_nmalloc(&scratch, ndim, f64);
 
         BayLaLogValue log_sum = bayla_log_value_map_into_log_domain(0);
         BayLaLogValue log_sumsq = bayla_log_value_map_into_log_domain(0);
@@ -1828,14 +1828,14 @@ bayla_miser_integrate_inner(
     else
     {
         /* Do some preliminary uniform sampling to decide how to bifurcate this domain. */
-        f64 *xs = eco_nmalloc(&scratch, ndim, f64);
-        f64 *x_mids = eco_nmalloc(&scratch, ndim, f64);
-        BayLaLogValue *fmaxl = eco_nmalloc(&scratch, ndim, BayLaLogValue);
-        BayLaLogValue *fmaxr = eco_nmalloc(&scratch, ndim, BayLaLogValue);
-        BayLaLogValue *fminl = eco_nmalloc(&scratch, ndim, BayLaLogValue);
-        BayLaLogValue *fminr = eco_nmalloc(&scratch, ndim, BayLaLogValue);
-        f64 *max_xs_l = eco_nmalloc(&scratch, ndim, f64);
-        f64 *min_xs_r = eco_nmalloc(&scratch, ndim, f64);
+        f64 *xs = eco_arena_nmalloc(&scratch, ndim, f64);
+        f64 *x_mids = eco_arena_nmalloc(&scratch, ndim, f64);
+        BayLaLogValue *fmaxl = eco_arena_nmalloc(&scratch, ndim, BayLaLogValue);
+        BayLaLogValue *fmaxr = eco_arena_nmalloc(&scratch, ndim, BayLaLogValue);
+        BayLaLogValue *fminl = eco_arena_nmalloc(&scratch, ndim, BayLaLogValue);
+        BayLaLogValue *fminr = eco_arena_nmalloc(&scratch, ndim, BayLaLogValue);
+        f64 *max_xs_l = eco_arena_nmalloc(&scratch, ndim, f64);
+        f64 *min_xs_r = eco_arena_nmalloc(&scratch, ndim, f64);
 
         Assert(xs && x_mids && fmaxl && fmaxr && fminl && fminr && max_xs_l && min_xs_r);
 
@@ -2076,8 +2076,8 @@ bayla_vegas_miser_integrate(BayLaModel const *model, BayLaIntegratorOptions *opt
 
     size max_iterations = max_total_samples / samples_per_refinement * 2; /* Give some extra space here. */
 
-    f64 *min_ys = eco_nmalloc(scratch, ndim, f64);
-    f64 *max_ys = eco_nmalloc(scratch, ndim, f64);
+    f64 *min_ys = eco_arena_nmalloc(scratch, ndim, f64);
+    f64 *max_ys = eco_arena_nmalloc(scratch, ndim, f64);
     for(size d = 0; d < ndim; ++d)
     {
         min_ys[d] = 0.0;
@@ -2087,9 +2087,9 @@ bayla_vegas_miser_integrate(BayLaModel const *model, BayLaIntegratorOptions *opt
     BayLaMiserInnerFunctionArgs args = { .model = model, .ndim = ndim, .map = map };
 
     /* Allocate some workspace memory. */
-    BayLaLogValue *log_integral = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
-    BayLaLogValue *log_integral_err = eco_nmalloc(scratch, max_iterations, BayLaLogValue);
-    size *samples_per_iter = eco_nmalloc(scratch, max_iterations, size);
+    BayLaLogValue *log_integral = eco_arena_nmalloc(scratch, max_iterations, BayLaLogValue);
+    BayLaLogValue *log_integral_err = eco_arena_nmalloc(scratch, max_iterations, BayLaLogValue);
+    size *samples_per_iter = eco_arena_nmalloc(scratch, max_iterations, size);
 
     size iter = 0;
     while(true)

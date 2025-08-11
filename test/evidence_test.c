@@ -2,7 +2,7 @@
 f64
 percentile(size num, f64 *vals, f64 target, MagStaticArena scratch)
 {
-    f64 *work_space = eco_nmalloc(&scratch, num, f64);
+    f64 *work_space = eco_arena_nmalloc(&scratch, num, f64);
 
     pak_radix_sort(vals, num, 0, sizeof(f64), work_space, PAK_RADIX_SORT_F64, PAK_SORT_ASCENDING);
 
@@ -694,7 +694,7 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
     {
         tds[m].model = models[m];
         tds[m].opts = *opts;
-        tds[m].scratch = mag_static_arena_borrow(&scratches[m]);
+        tds[m].scratch = scratches[m];
         tds[m].evidence = &evidence[m];
 
         success &= coy_thread_create(&threads[m], evidence_thread_func, &tds[m]);
@@ -753,17 +753,7 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
     }
     printf("Total calls: %.0lf million\n\n\n", total_calls / 1000000.0);
 
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-#ifdef _MAG_TRACK_MEM_USAGE
-        f64 pct_mem = mag_static_arena_max_ratio(&scratches[m]) * 100.0;
-        b32 over_allocated = mag_static_arena_over_allocated(&scratches[m]);
-        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-#endif
-
-        mag_static_arena_destroy(&scratches[m]);
-    }
+    for(size m = 0; m < NUM_MODELS; ++m) { mag_static_arena_destroy(&scratches[m]); }
 
 #undef NUM_MODELS
 
@@ -821,7 +811,7 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
             }
 
             tds[cnt].evidence = &evidence[m][cnt];
-            tds[cnt].scratch = mag_static_arena_borrow(&scratches[cnt]);
+            tds[cnt].scratch = scratches[cnt];
 
             success &= coy_thread_create(&threads[cnt], evidence_thread_func, &tds[cnt]);
             Assert(success);
@@ -857,33 +847,16 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
         }
         f64 std = sqrt(sum_diff_sq / (NUM_TRIALS - 1));
 
-        f64 pct = percentile(NUM_TRIALS, errors, std, mag_static_arena_borrow(&scratches[0]));
+        f64 pct = percentile(NUM_TRIALS, errors, std, scratches[0]);
         f64 pct_error = std/mean * 100.0;
 
         printf("%10s %8.6e ± %8.6e [%8.6e <-> %8.6e] %6.2lf%% %5.1lf%%\n",
                 model_names[m], mean, std, min_err, max_err, pct_error, pct);
     }
 
-#ifdef _MAG_TRACK_MEM_USAGE
-    printf("\n\n");
-#endif
-    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-    {
-
-#ifdef _MAG_TRACK_MEM_USAGE
-
-        f64 pct_mem = mag_static_arena_max_ratio(&scratches[cnt]) * 100.0;
-        b32 over_allocated = mag_static_arena_over_allocated(&scratches[cnt]);
-        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-
-#endif
-
-        mag_static_arena_destroy(&scratches[cnt]);
-    }
+    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt) { mag_static_arena_destroy(&scratches[cnt]); }
 
 #undef NUM_MODELS
-
 }
 
 static inline void
@@ -933,7 +906,7 @@ test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegr
                 starting_values,
                 &perm);
 
-        bayla_preconditioning_sample(&args, &ran, mag_static_arena_borrow(&scratches[0]));
+        bayla_preconditioning_sample(&args, &ran, scratches[0]);
 
         BayLaParametersSamples *samples = args.output;
         bayla_vegas_map_precondition(model, opts, samples, &perm);
@@ -969,7 +942,7 @@ test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegr
             }
 
             tds[cnt].evidence = &evidence[m][cnt];
-            tds[cnt].scratch = mag_static_arena_borrow(&scratches[cnt]);
+            tds[cnt].scratch = scratches[cnt];
 
             success &= coy_thread_create(&threads[cnt], evidence_thread_func, &tds[cnt]);
             Assert(success);
@@ -1005,41 +978,21 @@ test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegr
         }
         f64 std = sqrt(sum_diff_sq / (NUM_TRIALS - 1));
 
-        f64 pct = percentile(NUM_TRIALS, errors, std, mag_static_arena_borrow(&scratches[0]));
+        f64 pct = percentile(NUM_TRIALS, errors, std, scratches[0]);
         f64 pct_error = std/mean * 100.0;
 
         printf("%10s %8.6e ± %8.6e [%8.6e <-> %8.6e] %6.2lf%% %5.1lf%%\n",
                 model_names[m], mean, std, min_err, max_err, pct_error, pct);
     }
 
-#ifdef _MAG_TRACK_MEM_USAGE
-    printf("\n\n");
-#endif
     for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
     {
-
-#ifdef _MAG_TRACK_MEM_USAGE
-
-        f64 pct_mem = mag_static_arena_max_ratio(&scratches[cnt]) * 100.0;
-        b32 over_allocated = mag_static_arena_over_allocated(&scratches[cnt]);
-        printf( "%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-
-        pct_mem = mag_static_arena_max_ratio(&perms[cnt]) * 100.0;
-        over_allocated = mag_static_arena_over_allocated(&perms[cnt]);
-        printf( "%s used %.2lf%% of perm and perm %s over allocated.\n",
-                __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-
-#endif
-
         mag_static_arena_destroy(&perms[cnt]);
         mag_static_arena_destroy(&scratches[cnt]);
     }
 
 #undef NUM_MODELS
-
 }
-
 
 #undef NUM_TRIALS
 
@@ -1091,7 +1044,7 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
                 starting_values,
                 perm);
 
-        bayla_preconditioning_sample(&args, &ran, mag_static_arena_borrow(&scratch));
+        bayla_preconditioning_sample(&args, &ran, scratch);
         COY_END_PROFILE(ap);
 
         ap = COY_START_PROFILE_BLOCK("Preconditioning.");
@@ -1099,7 +1052,7 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
         bayla_vegas_map_precondition(model, opts, samples, perm);
         COY_END_PROFILE(ap);
 
-        evidence[m] = bayla_calculate_evidence(model, opts, mag_static_arena_borrow(&scratch));
+        evidence[m] = bayla_calculate_evidence(model, opts, scratch);
         if(evidence[m].result.value.val > max_evidence)
         {
             max_evidence = evidence[m].result.value.val;
@@ -1144,22 +1097,9 @@ test_sampling_preconditioning(BayLaIntegratorOptions *opts)
     }
     printf("Total calls: %.0lf million\n", total_calls / 1000000.0);
 
-#ifdef _MAG_TRACK_MEM_USAGE
-    f64 pct_mem = mag_static_arena_max_ratio(&scratch) * 100.0;
-    b32 over_allocated = mag_static_arena_over_allocated(&scratch);
-    printf( "\n\n%s used %.2lf%% of scratch and scratch %s over allocated.\n",
-            __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-
-    pct_mem = mag_static_arena_max_ratio(perm) * 100.0;
-    over_allocated = mag_static_arena_over_allocated(perm);
-    printf( "%s used %.2lf%% of perm and perm %s over allocated.\n\n\n",
-            __func__, pct_mem, over_allocated ? "***WAS***": "was not");
-#endif
-
     mag_static_arena_destroy(&scratch);
 
 #undef NUM_MODELS
-
 }
 
 /*---------------------------------------------------   All Tests    -----------------------------------------------------*/
