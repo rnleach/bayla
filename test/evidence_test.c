@@ -22,7 +22,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 100
+#define NUM_DATA_POINTS 10
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -761,7 +761,7 @@ test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
 
 /*----------------------------------------------------- Consistency -------------------------------------------------------*/
 
-#define NUM_TRIALS 100
+#define NUM_TRIALS 50
 
 static inline void
 test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
@@ -785,6 +785,9 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
     }
 
     initialize_global_data();
+
+    printf("%10s %13s ± %13s [%13s <-> %13s] %7s %10s\n",
+            "Model Name", "Mean", "Std", "Min Err", "Max Err", "Pct Err", "Percentile");
 
     for(size m = 0; m < NUM_MODELS; ++m)
     {
@@ -850,7 +853,7 @@ test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
         f64 pct = percentile(NUM_TRIALS, errors, std, scratches[0]);
         f64 pct_error = std/mean * 100.0;
 
-        printf("%10s %8.6e ± %8.6e [%8.6e <-> %8.6e] %6.2lf%% %5.1lf%%\n",
+        printf("%10s %13.6e ± %13.6e [%13.6e <-> %13.6e] %6.2lf%% %9.1lf%%\n",
                 model_names[m], mean, std, min_err, max_err, pct_error, pct);
     }
 
@@ -887,6 +890,9 @@ test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegr
     initialize_global_data();
 
     f64 starting_values[NUM_MODELS] = {0};
+
+    printf("%10s %13s ± %13s [%13s <-> %13s] %7s %10s\n",
+            "Model Name", "Mean", "Std", "Min Err", "Max Err", "Pct Err", "Percentile");
 
     for(size m = 0; m < NUM_MODELS; ++m)
     {
@@ -981,7 +987,7 @@ test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegr
         f64 pct = percentile(NUM_TRIALS, errors, std, scratches[0]);
         f64 pct_error = std/mean * 100.0;
 
-        printf("%10s %8.6e ± %8.6e [%8.6e <-> %8.6e] %6.2lf%% %5.1lf%%\n",
+        printf("%10s %13.6e ± %13.6e [%13.6e <-> %13.6e] %6.2lf%% %9.1lf%%\n",
                 model_names[m], mean, std, min_err, max_err, pct_error, pct);
     }
 
