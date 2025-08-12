@@ -592,8 +592,8 @@ static BayLaIntegratorOptions global_opts[] =
             .simple_monte_carlo.min_samples = 50000,
             .simple_monte_carlo.max_samples = 30000000,
             .simple_monte_carlo.samples_per_batch = 1000,
-            .simple_monte_carlo.acceptable_abs_error = -1.0e-100,
-            .simple_monte_carlo.acceptable_prop_error = 0.05,
+            .simple_monte_carlo.acceptable_abs_error = -1.0e-10,
+            .simple_monte_carlo.acceptable_prop_error = -0.05,
             .simple_monte_carlo.seed = 43
         },
 
@@ -604,7 +604,7 @@ static BayLaIntegratorOptions global_opts[] =
             .miser.total_samples = 30000000,
             .miser.explore_factor = 0.1,
             .miser.acceptable_abs_error = -1.0e-100,
-            .miser.acceptable_prop_error = 0.05,
+            .miser.acceptable_prop_error = -0.05,
             .miser.seed = 44
         },
 
@@ -614,7 +614,7 @@ static BayLaIntegratorOptions global_opts[] =
             .vegas.max_total_samples = 30000000,
             .vegas.samples_per_refinement = 2000000,
             .vegas.acceptable_abs_error = -1.0e-10,
-            .vegas.acceptable_prop_error = 0.05,
+            .vegas.acceptable_prop_error = -0.05,
             .vegas.num_grid_cells = 1000,
             .vegas.alpha = 0.75,
             .vegas.seed = 45
@@ -629,7 +629,7 @@ static BayLaIntegratorOptions global_opts[] =
             .vegas_miser.min_to_subdivide = 120,
             .vegas_miser.explore_factor = 0.1,
             .vegas_miser.acceptable_abs_error = -1.0e-10,
-            .vegas_miser.acceptable_prop_error = 0.05,
+            .vegas_miser.acceptable_prop_error = -0.05,
             .vegas_miser.num_grid_cells = 1000,
             .vegas_miser.alpha = 0.75,
             .vegas_miser.seed = 46
@@ -641,7 +641,7 @@ static BayLaIntegratorOptions global_opts[] =
             .vegas_plus.max_total_samples = 30000000,
             .vegas_plus.samples_per_refinement = 2000000,
             .vegas_plus.acceptable_abs_error = -1.0e-10,
-            .vegas_plus.acceptable_prop_error = 0.05,
+            .vegas_plus.acceptable_prop_error = -0.05,
             .vegas_plus.num_grid_cells = 1000,
             .vegas_plus.alpha = 0.75,
             .vegas_plus.beta = 0.75,

@@ -64,7 +64,7 @@ test_integrator_pi(void)
                 .simple_monte_carlo.max_samples = 20000000,
                 .simple_monte_carlo.samples_per_batch = 10000,
                 .simple_monte_carlo.acceptable_abs_error = -1.0e-10,
-                .simple_monte_carlo.acceptable_prop_error = 0.0001,
+                .simple_monte_carlo.acceptable_prop_error = -0.0001,
                 .simple_monte_carlo.seed = 43
             },
 
@@ -76,7 +76,7 @@ test_integrator_pi(void)
                 .miser.total_samples = 20000000,
                 .miser.explore_factor = 0.1,
                 .miser.acceptable_abs_error = -1.0e-10,
-                .miser.acceptable_prop_error = 0.0001,
+                .miser.acceptable_prop_error = -0.0001,
                 .miser.seed = 44
             },
 
@@ -88,7 +88,7 @@ test_integrator_pi(void)
                 .vegas.samples_per_refinement = 10000,
                 .vegas.num_grid_cells = 1000,
                 .vegas.acceptable_abs_error = -1.0e-10,
-                .vegas.acceptable_prop_error = 0.0001,
+                .vegas.acceptable_prop_error = -0.0001,
                 .vegas.alpha = 0.75,
                 .vegas.seed = 45
             },
@@ -104,7 +104,7 @@ test_integrator_pi(void)
                 .vegas_miser.min_to_subdivide = 120,
                 .vegas_miser.explore_factor = 0.1,
                 .vegas_miser.acceptable_abs_error = -1.0e-10,
-                .vegas_miser.acceptable_prop_error = 0.0001,
+                .vegas_miser.acceptable_prop_error = -0.0001,
                 .vegas_miser.alpha = 0.75,
                 .vegas_miser.seed = 46
             },
@@ -117,7 +117,7 @@ test_integrator_pi(void)
                 .vegas_plus.samples_per_refinement = 10000,
                 .vegas_plus.num_grid_cells = 1000,
                 .vegas_plus.acceptable_abs_error = -1.0e-10,
-                .vegas_plus.acceptable_prop_error = 0.0001,
+                .vegas_plus.acceptable_prop_error = -0.0001,
                 .vegas_plus.alpha = 0.75,
                 .vegas_plus.beta = 0.75,
                 .vegas_plus.seed = 47
@@ -275,7 +275,7 @@ test_integrator_ki(void)
                 .simple_monte_carlo.max_samples = 20000000,
                 .simple_monte_carlo.samples_per_batch = 10000,
                 .simple_monte_carlo.acceptable_abs_error = -1.0e-10,
-                .simple_monte_carlo.acceptable_prop_error = 0.0001,
+                .simple_monte_carlo.acceptable_prop_error = -0.0001,
                 .simple_monte_carlo.seed = 43
             },
 
@@ -287,7 +287,7 @@ test_integrator_ki(void)
                 .miser.total_samples = 20000000,
                 .miser.explore_factor = 0.1,
                 .miser.acceptable_abs_error = -1.0e-10,
-                .miser.acceptable_prop_error = 0.0001,
+                .miser.acceptable_prop_error = -0.0001,
                 .miser.seed = 44
             },
 
@@ -299,7 +299,7 @@ test_integrator_ki(void)
                 .vegas.samples_per_refinement = 10000,
                 .vegas.num_grid_cells = 1000,
                 .vegas.acceptable_abs_error = -1.0e-10,
-                .vegas.acceptable_prop_error = 0.0001,
+                .vegas.acceptable_prop_error = -0.0001,
                 .vegas.alpha = 0.75,
                 .vegas.seed = 45
             },
@@ -315,7 +315,7 @@ test_integrator_ki(void)
                 .vegas_miser.min_to_subdivide = 120,
                 .vegas_miser.explore_factor = 0.1,
                 .vegas_miser.acceptable_abs_error = -1.0e-10,
-                .vegas_miser.acceptable_prop_error = 0.0001,
+                .vegas_miser.acceptable_prop_error = -0.0001,
                 .vegas_miser.alpha = 0.75,
                 .vegas_miser.seed = 46
             },
@@ -328,7 +328,7 @@ test_integrator_ki(void)
                 .vegas_plus.samples_per_refinement = 10000,
                 .vegas_plus.num_grid_cells = 1000,
                 .vegas_plus.acceptable_abs_error = -1.0e-10,
-                .vegas_plus.acceptable_prop_error = 0.0001,
+                .vegas_plus.acceptable_prop_error = -0.0001,
                 .vegas_plus.alpha = 0.75,
                 .vegas_plus.beta = 0.75,
                 .vegas_plus.seed = 47
@@ -349,7 +349,7 @@ test_integrator_ki(void)
                 .vegas.samples_per_refinement = 10000,
                 .vegas.num_grid_cells = 1000,
                 .vegas.acceptable_abs_error = -1.0e-10,
-                .vegas.acceptable_prop_error = 0.0001,
+                .vegas.acceptable_prop_error = -0.0001,
                 .vegas.alpha = 0.75,
                 .vegas.seed = 45
             },
@@ -365,7 +365,7 @@ test_integrator_ki(void)
                 .vegas_miser.min_to_subdivide = 120,
                 .vegas_miser.explore_factor = 0.1,
                 .vegas_miser.acceptable_abs_error = -1.0e-10,
-                .vegas_miser.acceptable_prop_error = 0.0001,
+                .vegas_miser.acceptable_prop_error = -0.0001,
                 .vegas_miser.alpha = 0.75,
                 .vegas_miser.seed = 46
             },
@@ -378,7 +378,7 @@ test_integrator_ki(void)
                 .vegas_plus.samples_per_refinement = 10000,
                 .vegas_plus.num_grid_cells = 1000,
                 .vegas_plus.acceptable_abs_error = -1.0e-10,
-                .vegas_plus.acceptable_prop_error = 0.0001,
+                .vegas_plus.acceptable_prop_error = -0.0001,
                 .vegas_plus.alpha = 0.75,
                 .vegas_plus.beta = 0.75,
                 .vegas_plus.seed = 47
