@@ -11,6 +11,7 @@
 #include "../lib/bayla.h"
 
 #include "log_math.c"
+#include "dist_tests.c"
 
 int
 main(int argc, char *argv[])
@@ -19,6 +20,7 @@ main(int argc, char *argv[])
     printf("  ---------- Starting Tests ----------\n");
 
     all_log_math_tests();
+    all_distribution_math_tests();
 
     printf("  \n---------- Finished Tests ----------\n");
     coy_profile_end();
