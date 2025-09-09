@@ -23,20 +23,20 @@ distribution_tests(void)
     cov.data[1] = rho * s0 * s1;
     cov.data[2] = cov.data[1];
 
-    BayLaMVNormalDistribution dist = bayla_mv_normal_dist_create(2, mean, cov, alloc);
+    BayLaMVNormDist dist = bayla_mv_norm_dist_create(2, mean, cov, alloc);
 
     for(size i = 0; i < 100; ++i)
     {
         f64 deviate[2] = {0};
-        BayLaLogValue lp1 = bayla_mv_normal_dist_random_deviate(&dist, state, deviate, workspace);
-        BayLaLogValue lp2 = bayla_mv_normal_dist_prob(&dist, deviate, workspace);
+        BayLaLogValue lp1 = bayla_mv_norm_dist_random_deviate(&dist, state, deviate, workspace);
+        BayLaLogValue lp2 = bayla_mv_norm_dist_prob(&dist, deviate, workspace);
 
         f64 diff = bayla_log_value_map_out_of_log_domain(lp1) - bayla_log_value_map_out_of_log_domain(lp2);
         f64 ratio = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(lp1, lp2));
 #if 0
         f64 log_ratio = bayla_log_value_divide(lp1, lp2).val;
 
-        printf("%10.6g ==? %10.6g for (%10.6g, %10.6g) ratio %e log ratio %13.6e diff %13.6e\n",
+        printf("%10.6g ==? %10.6g for (%16.12g, %16.12g) ratio %e log ratio %13.6e diff %13.6e\n",
                 lp1.val, lp2.val, deviate[0], deviate[1], ratio, log_ratio, diff);
 #else
         Assert(fabs(diff) <= 1.0e-10);

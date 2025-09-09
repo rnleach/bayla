@@ -61,12 +61,16 @@ typedef f64 (*BayLaLogLikelihood)(size num_parms, f64 const *parms, void *user_d
  */
 typedef void (*BayLaMaxAPosteriori)(void *user_data, size num_parms, f64 *parms_out);
 
-/* TODO: a function for calculating the covariance matrix.
- * The "data" is fixed and stored somewhere in the user_data. When you evaluate this function, it fills the buffer cov_matrix
- * (which is sized num_parms x num_parms) with entries in the covariance matrix. This, along with the max_a_posteriori_parms
- * are used to create a Gaussian approximation to the posterior distribution.
+/* Calculates the Hessian matrix at a specified position, usually the max-a-posteriori parameter values.
+ *
+ * The "data" is fixed and stored somewhere in the user_data. When you evaluate this function, it returns Hessian matrix
+ * (which is sized num_parms x num_parms). This, along with the max_a_posteriori_parms are used to create a Gaussian
+ * approximation to the posterior distribution.
+ *
+ * Note that this is the same as the inverse of the covariance matrix, and the result is used in 
+ * bayla_mv_norm_dist_create_from_inverse.
  */
-typedef BayLaSquareMatrix (*BayLaCovarianceMatrix)(void *user_data, size num_parms, f64 const *max_a_posteriori_parms);
+typedef BayLaSquareMatrix (*BayLaHessianMatrix)(void *user_data, size num_parms, f64 const *max_a_posteriori_parms);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *
@@ -140,17 +144,18 @@ typedef struct
     BayLaSquareMatrix cov;
     BayLaSquareMatrix inv_cov;
     BayLaLogValue normalization_constant;
-} BayLaMVNormalDistribution;
+} BayLaMVNormDist;
 
-API BayLaMVNormalDistribution bayla_mv_normal_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc);
+API BayLaMVNormDist bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc);
+API BayLaMVNormDist bayla_mv_norm_dist_create_from_inverse(size ndim, f64 *mean, BayLaSquareMatrix inverse_covar, MagAllocator *alloc);
 
 /* returns the probability value of the associated point, workspace needs to be at least as big as dist->ndim */
-API BayLaLogValue bayla_mv_normal_dist_random_deviate(BayLaMVNormalDistribution *dist, ElkRandomState *state, f64 *deviate, f64 *workspace);
+API BayLaLogValue bayla_mv_norm_dist_random_deviate(BayLaMVNormDist *dist, ElkRandomState *state, f64 *deviate, f64 *workspace);
 /* returns the probability value of the input value deviate. workspace needs to be twice dist->ndim */
-API BayLaLogValue bayla_mv_normal_dist_prob(BayLaMVNormalDistribution *dist, f64 *deviate, f64 *workspace);
+API BayLaLogValue bayla_mv_norm_dist_prob(BayLaMVNormDist *dist, f64 *deviate, f64 *workspace);
 
 /*---------------------------------------------------------------------------------------------------------------------------
- *                                              Analysis of BayLaian Models
+ *                                              Analysis of Bayesian Models
  *-------------------------------------------------------------------------------------------------------------------------*/
 
 /* Description of a model to be used for a Baysiean analysis. */
@@ -160,16 +165,22 @@ typedef struct
     f64 model_prior_probability;    /* Prior prob *this model* is the correct one. P(Model | I), Jaynes eq. 20.3 (pg 602) */
     size n_parameters;              /* The number of parameters in this model.                                            */
 
-    BayLaLogPrior prior;                       /* See typedef above. P(Θ | Model, I), Jaynes eq 20.1, 20.2 (pg 602)       */
-    BayLaLogLikelihood likelihood;             /* See typedef above. P(Data | Θ, Model, I), Jaynes eq 20.1, 20.2 (pg 602) */
-    BayLaMaxAPosteriori posterior_max;         /* See typedef above. argmax(Θ) P(Θ | Data, Model, I)                      */
-    BayLaCovarianceMatrix calc_cov_matrix;     /* See typedef above. Used to create a Gaussian approximation.             */
+    BayLaLogPrior prior;                 /* See typedef above. P(Θ | Model, I), Jaynes eq 20.1, 20.2 (pg 602)             */
+    BayLaLogLikelihood likelihood;       /* See typedef above. P(Data | Θ, Model, I), Jaynes eq 20.1, 20.2 (pg 602)       */
+    BayLaMaxAPosteriori posterior_max;   /* See typedef above. argmax(Θ) P(Θ | Data, Model, I)                            */
+    BayLaHessianMatrix hessian_matrix;   /* See typedef above. Used to create a Gaussian approximation.                   */
 
     f64 *min_parameter_vals;        /* Array n_parameters long of the minimum value parameters can practically have.      */
     f64 *max_parameter_vals;        /* Array n_parameters long of the miximum value parameters can practically have.      */
 
     void *user_data;                /* Any other state or data you may need for evaluating the prior, likelihood, etc.    */
 } BayLaModel;
+
+API BayLaLogValue bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals);
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                                  Sampling Statistics
+ *-------------------------------------------------------------------------------------------------------------------------*/
+API f64 bayla_effective_sample_size(size nvals, BayLaLogValue *ws);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                    Implementations
@@ -326,6 +337,14 @@ bayla_cholesky_decomp(BayLaSquareMatrix matrix, MagAllocator *alloc)
             {
                 chol.data[MATRIX_IDX(j, i, ndim)] = sum / chol.data[MATRIX_IDX(i, i, ndim)];
             }
+        }
+    }
+
+    for(i32 i = 0; i < ndim; ++i)
+    {
+        for(i32 j = 0; j < i; ++j)
+        { 
+            chol.data[MATRIX_IDX(j, i, ndim)] = 0.0;
         }
     }
 
@@ -498,11 +517,29 @@ bayla_normal_distribution_random_deviate(BayLaNormalDistribution *dist, ElkRando
     return dist->mu + dist->sigma * v / u;
 }
 
-API BayLaMVNormalDistribution 
-bayla_mv_normal_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc)
+API b32
+bayla_mv_norm_dist_validate_internal(BayLaMVNormDist *dist)
+{
+    b32 result = dist->valid;
+
+    /* Check that the normalization constant doesn't blow us up! (In the log domain,-INFINITY implies a constant of 0) */
+    result &= !(isinf(dist->normalization_constant.val) || isnan(dist->normalization_constant.val));
+
+    for(i32 i = 0; i < dist->ndim * dist->ndim; ++i)
+    {
+        result &= !(isinf(dist->chol.data[i]) || isnan(dist->chol.data[i]));
+        result &= !(isinf(dist->cov.data[i]) || isnan(dist->cov.data[i]));
+        result &= !(isinf(dist->inv_cov.data[i]) || isnan(dist->inv_cov.data[i]));
+    }
+
+    return result;
+}
+
+API BayLaMVNormDist 
+bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc)
 {
     MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_KiB(20));
-    BayLaMVNormalDistribution dist = { .ndim = ndim, .valid = true };
+    BayLaMVNormDist dist = { .ndim = ndim, .valid = true };
     f64 *dist_mean = eco_arena_nmalloc(alloc, ndim, f64);
     memcpy(dist_mean, mean, ndim * sizeof(f64));
     dist.mean = dist_mean;
@@ -525,13 +562,47 @@ bayla_mv_normal_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAl
     dist.normalization_constant = bayla_log_value_reciprocal(bayla_log_value_power(covar_det, 0.5));
     dist.normalization_constant.val += (-0x1.d67f1c864beb4p-1 * ndim); /* Literal of log(1/sqrt(2*pi)) */
 
+    dist.valid = bayla_mv_norm_dist_validate_internal(&dist);
+
+    mag_static_arena_destroy(&scratch);
+
+    return dist;
+}
+
+API BayLaMVNormDist 
+bayla_mv_norm_dist_create_from_inverse(size ndim, f64 *mean, BayLaSquareMatrix inverse_covar, MagAllocator *alloc)
+{
+    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    BayLaMVNormDist dist = { .ndim = ndim, .valid = true };
+    f64 *dist_mean = eco_arena_nmalloc(alloc, ndim, f64);
+    memcpy(dist_mean, mean, ndim * sizeof(f64));
+    dist.mean = dist_mean;
+
+    dist.inv_cov = bayla_square_matrix_create(ndim, alloc);
+    memcpy(dist.inv_cov.data, inverse_covar.data, sizeof(f64) * ndim * ndim);
+
+    dist.cov = bayla_square_matrix_invert(dist.inv_cov, alloc, scratch);
+
+    dist.chol = bayla_cholesky_decomp(dist.cov, alloc);
+    dist.valid = dist.chol.valid;
+    Assert(dist.valid);
+
+    BayLaLogValue covar_det = bayla_log_one;
+    for(i32 i = 0; i < dist.ndim; ++i)
+    {
+        BayLaLogValue diag_val = bayla_log_value_map_into_log_domain(dist.chol.data[MATRIX_IDX(i, i, dist.ndim)]);
+        covar_det = bayla_log_value_multiply(covar_det, bayla_log_value_power(diag_val, 2.0));
+    }
+    dist.normalization_constant = bayla_log_value_reciprocal(bayla_log_value_power(covar_det, 0.5));
+    dist.normalization_constant.val += (-0x1.d67f1c864beb4p-1 * ndim); /* Literal of log(1/sqrt(2*pi)) */
+
     mag_static_arena_destroy(&scratch);
 
     return dist;
 }
 
 API BayLaLogValue 
-bayla_mv_normal_dist_random_deviate(BayLaMVNormalDistribution *dist, ElkRandomState *state, f64 *deviate, f64 *workspace)
+bayla_mv_norm_dist_random_deviate(BayLaMVNormDist *dist, ElkRandomState *state, f64 *deviate, f64 *workspace)
 {
     f64 log_prob = 0.0; /* log(1.0) */
     f64 u = 0.0, v = 0.0, q = 0.0;
@@ -573,7 +644,7 @@ bayla_mv_normal_dist_random_deviate(BayLaMVNormalDistribution *dist, ElkRandomSt
 }
 
 API BayLaLogValue 
-bayla_mv_normal_dist_prob(BayLaMVNormalDistribution *dist, f64 *deviate, f64 *workspace)
+bayla_mv_norm_dist_prob(BayLaMVNormDist *dist, f64 *deviate, f64 *workspace)
 {
     /* Calculate the displacement from the mean. */
     f64 *displacement = workspace;
@@ -603,7 +674,23 @@ bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
     return bayla_log_value_create(log_prob);
 }
 
+API f64 
+bayla_effective_sample_size(size nvals, BayLaLogValue *ws)
+{
+    BayLaLogValue sum = bayla_log_values_sum(nvals, ws);
 
+    /* Square the values. */
+    for(size i = 0; i < nvals; ++i) { ws[i].val *= 2.0; }
+
+    BayLaLogValue sum_sqs = bayla_log_values_sum(nvals, ws);
+
+    /* Undo square the values. */
+    for(size i = 0; i < nvals; ++i) { ws[i].val *= 0.5; }
+
+    BayLaLogValue neff = bayla_log_value_divide(bayla_log_value_power(sum, 2.0), sum_sqs);
+
+    return bayla_log_value_map_out_of_log_domain(neff);
+}
 
 #pragma warning(pop)
 
