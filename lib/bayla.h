@@ -187,7 +187,10 @@ typedef struct
     f64 std;
 } BayLaErrorValue;
 
-API BayLaSamples bayla_importance_sample(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc);
+/* sf is the spread factor, it means multiply the variance of the Gaussian proposal distribution to get more sampling
+ * in the tails.
+ */
+API BayLaSamples bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc);
 API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname);
 API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
@@ -697,7 +700,7 @@ bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
 }
 
 API BayLaSamples 
-bayla_importance_sample(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc)
+bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc)
 {
     /* Some scratch working space. This should be pretty small, so we'll go ahead and do it on the stack for now. */
     byte buf[ECO_KiB(64)] = {0};
@@ -722,6 +725,13 @@ bayla_importance_sample(BayLaModel const *model, size n_samples, u64 seed, MagAl
     f64 *prop_mean = eco_arena_nmalloc(scratch, ndim, f64);
     model->posterior_max(model->user_data, ndim, prop_mean);
     BayLaSquareMatrix prop_hessian = model->hessian_matrix(model->user_data, ndim, prop_mean, scratch);
+
+    /* Apply the spread factor. */
+    for(size i = 0; i < ndim * ndim; ++i)
+    {
+        prop_hessian.data[i] /= sf;
+    }
+
     BayLaMVNormDist prop_dist = bayla_mv_norm_dist_create_from_hessian(ndim, prop_mean, prop_hessian, scratch);
     f64 *workspace = eco_arena_nmalloc(scratch, ndim, f64);
     Assert(prop_dist.valid && workspace);

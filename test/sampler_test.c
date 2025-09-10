@@ -98,13 +98,13 @@ test_simple_model(void)
             .user_data = &args
         };
 
-    BayLaSamples samples = bayla_importance_sample(&model, 100000, 13, alloc);
+    BayLaSamples samples = bayla_importance_sample(&model, 1.0, 10000, 13, alloc);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    printf("\nndim = %2ld n_samples = %4ld neff = %4.0lf effective ratio = %4.2lf z_evidence = %e [%lf%%])\n",
+    printf("\nndim = %2ld n_samples = %4ld neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
             samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
-            z.val, 2.0 * z.std / z.val * 100);
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    f64 p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    f64 p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.95, scratch);
     printf("p_thresh = %lf\n", p_thresh);
 
     BayLaCredibleInterval x0_ci = bayla_samples_calculate_ci(&samples, 0.95, 0, scratch);
