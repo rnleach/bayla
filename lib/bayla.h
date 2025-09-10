@@ -1,8 +1,11 @@
 #ifndef _BAYLA_H_
 #define _BAYLA_H_
 
+#include <float.h>
+
 #include "elk.h"
 #include "magpie.h"
+#include "packrat.h"
 
 #pragma warning(push)
 
@@ -20,7 +23,7 @@ typedef struct
 #define MATRIX_IDX(row, col, ncols) ((row) * (ncols) + (col))
 
 API BayLaSquareMatrix bayla_square_matrix_create(i32 ndim, MagAllocator *alloc);
-API BayLaSquareMatrix bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagStaticArena scratch);
+API BayLaSquareMatrix bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAllocator scratch);
 API void bayla_square_matrix_left_multiply(BayLaSquareMatrix matrix, f64 *input, f64 *output);
 API f64 bayla_dot_product(size ndim, f64 *left, f64 *right);
 
@@ -42,7 +45,8 @@ API void bayla_cholesky_multiply(BayLaCholeskyMatrix const chol, size const num_
  * 
  * P(Θ | Model, I) in Jaynes eq 20.1, 20.2 (page 602)
  */
-typedef f64 (*BayLaLogPrior)(size num_parms, f64 const *parms, void *user_data);
+typedef 
+f64 (*BayLaLogPrior)(size num_parms, f64 const *parms, void *user_data);
 
 /* The logarithm of a normalized likelihood function for this model and the data. 
  * 
@@ -52,25 +56,28 @@ typedef f64 (*BayLaLogPrior)(size num_parms, f64 const *parms, void *user_data);
  *
  * P(Data | Θ, Model, I) in Jaynes eq 20.1, 20.2 (pg 602)
  */
-typedef f64 (*BayLaLogLikelihood)(size num_parms, f64 const *parms, void *user_data);
+typedef
+f64 (*BayLaLogLikelihood)(size num_parms, f64 const *parms, void *user_data);
 
 /* The location in parameter space of the max a posteriori.
  *
  * The "data" is fixed and stored somewhere in the user_data. When you evaluate this function, it fills the buffer parms_out
  * with the model parameters that maximize the posterior for this model and the data provided.
  */
-typedef void (*BayLaMaxAPosteriori)(void *user_data, size num_parms, f64 *parms_out);
+typedef
+void (*BayLaMaxAPosteriori)(void *user_data, size num_parms, f64 *parms_out);
 
 /* Calculates the Hessian matrix at a specified position, usually the max-a-posteriori parameter values.
  *
- * The "data" is fixed and stored somewhere in the user_data. When you evaluate this function, it returns Hessian matrix
- * (which is sized num_parms x num_parms). This, along with the max_a_posteriori_parms are used to create a Gaussian
- * approximation to the posterior distribution.
+ * The "data" is fixed and stored somewhere in the ud. When you evaluate this function, it returns Hessian matrix (which is
+ * sized num_parms x num_parms). This, along with the max_a_posteriori_parms are used to create a Gaussian approximation to
+ * the posterior distribution.
  *
- * Note that this is the same as the inverse of the covariance matrix, and the result is used in 
- * bayla_mv_norm_dist_create_from_inverse.
+ * Note that this is the same as the negative of the inverse of the covariance matrix, and the result is used in 
+ * bayla_mv_norm_dist_create_from_hessian.
  */
-typedef BayLaSquareMatrix (*BayLaHessianMatrix)(void *user_data, size num_parms, f64 const *max_a_posteriori_parms);
+typedef 
+BayLaSquareMatrix (*BayLaHessianMatrix)(void *ud, size num_parms, f64 const *max_a_posteriori_parms, MagAllocator *alloc);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *
@@ -105,24 +112,6 @@ BayLaLogValue const bayla_log_zero = { .val = -INFINITY };
 BayLaLogValue const bayla_log_one = { .val = 0.0 };
 
 /*---------------------------------------------------------------------------------------------------------------------------
- *                                            Values with an Error Information
- *-------------------------------------------------------------------------------------------------------------------------*/
-
-/* Many values come with an error term.
- *
- * The numerical results of Monte-Carlo integration come with an error term. Also if using the Gaussian approximation near
- * a maximum likelihood value, the second derivative can be evaluated numerically to come up with a sigma value for the
- * distribution.
- *
- * This assumes the errors have a Gaussian distribution and the error term is the standard deviation.
- */
-typedef struct
-{
-    BayLaLogValue value;
-    BayLaLogValue error;
-} BayLaValue;
-
-/*---------------------------------------------------------------------------------------------------------------------------
  *                                                 Generate Random Numbers
  *-------------------------------------------------------------------------------------------------------------------------*/
 
@@ -147,12 +136,12 @@ typedef struct
 } BayLaMVNormDist;
 
 API BayLaMVNormDist bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc);
-API BayLaMVNormDist bayla_mv_norm_dist_create_from_inverse(size ndim, f64 *mean, BayLaSquareMatrix inverse_covar, MagAllocator *alloc);
+API BayLaMVNormDist bayla_mv_norm_dist_create_from_hessian(size ndim, f64 *mean, BayLaSquareMatrix hessian, MagAllocator *alloc);
 
 /* returns the probability value of the associated point, workspace needs to be at least as big as dist->ndim */
 API BayLaLogValue bayla_mv_norm_dist_random_deviate(BayLaMVNormDist *dist, ElkRandomState *state, f64 *deviate, f64 *workspace);
 /* returns the probability value of the input value deviate. workspace needs to be twice dist->ndim */
-API BayLaLogValue bayla_mv_norm_dist_prob(BayLaMVNormDist *dist, f64 *deviate, f64 *workspace);
+API BayLaLogValue bayla_mv_norm_dist_prob(BayLaMVNormDist *dist, f64 const *deviate, f64 *workspace);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                              Analysis of Bayesian Models
@@ -170,20 +159,48 @@ typedef struct
     BayLaMaxAPosteriori posterior_max;   /* See typedef above. argmax(Θ) P(Θ | Data, Model, I)                            */
     BayLaHessianMatrix hessian_matrix;   /* See typedef above. Used to create a Gaussian approximation.                   */
 
-    f64 *min_parameter_vals;        /* Array n_parameters long of the minimum value parameters can practically have.      */
-    f64 *max_parameter_vals;        /* Array n_parameters long of the miximum value parameters can practically have.      */
-
     void *user_data;                /* Any other state or data you may need for evaluating the prior, likelihood, etc.    */
 } BayLaModel;
 
 API BayLaLogValue bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals);
 /*---------------------------------------------------------------------------------------------------------------------------
- *                                                  Sampling Statistics
+ *                                                  Sampling and Statistics
  *-------------------------------------------------------------------------------------------------------------------------*/
-API f64 bayla_effective_sample_size(size nvals, BayLaLogValue *ws);
+typedef struct
+{
+    size n_samples;
+    size ndim;
+    f64 neff;
+    f64 z_evidence;
+    f64 *rows;             /* n_samples x (ndim + 3) */
+} BayLaSamples;
+
+typedef struct
+{
+    f64 low;
+    f64 high;
+} BayLaCredibleInterval;
+
+typedef struct 
+{
+    f64 val;
+    f64 std;
+} BayLaErrorValue;
+
+API BayLaSamples bayla_importance_sample(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc);
+API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname);
+API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
+
+API BayLaCredibleInterval bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch);
+API BayLaErrorValue bayla_samples_estimate_evidence(BayLaSamples *samples);
+API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud);
 
 /*---------------------------------------------------------------------------------------------------------------------------
+ *
+ *
  *                                                    Implementations
+ *
+ *
  *-------------------------------------------------------------------------------------------------------------------------*/
 
 API BayLaSquareMatrix 
@@ -195,7 +212,7 @@ bayla_square_matrix_create(i32 ndim, MagAllocator *alloc)
 }
 
 API BayLaSquareMatrix 
-bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagStaticArena scratch)
+bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAllocator scratch)
 {
     i32 const n = matrix.ndim;
 
@@ -538,7 +555,9 @@ bayla_mv_norm_dist_validate_internal(BayLaMVNormDist *dist)
 API BayLaMVNormDist 
 bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc)
 {
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+
     BayLaMVNormDist dist = { .ndim = ndim, .valid = true };
     f64 *dist_mean = eco_arena_nmalloc(alloc, ndim, f64);
     memcpy(dist_mean, mean, ndim * sizeof(f64));
@@ -564,22 +583,25 @@ bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllo
 
     dist.valid = bayla_mv_norm_dist_validate_internal(&dist);
 
-    mag_static_arena_destroy(&scratch);
+    eco_arena_destroy(&scratch);
 
     return dist;
 }
 
 API BayLaMVNormDist 
-bayla_mv_norm_dist_create_from_inverse(size ndim, f64 *mean, BayLaSquareMatrix inverse_covar, MagAllocator *alloc)
+bayla_mv_norm_dist_create_from_hessian(size ndim, f64 *mean, BayLaSquareMatrix hessian, MagAllocator *alloc)
 {
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+
     BayLaMVNormDist dist = { .ndim = ndim, .valid = true };
     f64 *dist_mean = eco_arena_nmalloc(alloc, ndim, f64);
     memcpy(dist_mean, mean, ndim * sizeof(f64));
     dist.mean = dist_mean;
 
     dist.inv_cov = bayla_square_matrix_create(ndim, alloc);
-    memcpy(dist.inv_cov.data, inverse_covar.data, sizeof(f64) * ndim * ndim);
+    memcpy(dist.inv_cov.data, hessian.data, sizeof(f64) * ndim * ndim);
+    for(size i = 0; i < ndim * ndim; ++i) { dist.inv_cov.data[i] *= -1; }
 
     dist.cov = bayla_square_matrix_invert(dist.inv_cov, alloc, scratch);
 
@@ -596,7 +618,7 @@ bayla_mv_norm_dist_create_from_inverse(size ndim, f64 *mean, BayLaSquareMatrix i
     dist.normalization_constant = bayla_log_value_reciprocal(bayla_log_value_power(covar_det, 0.5));
     dist.normalization_constant.val += (-0x1.d67f1c864beb4p-1 * ndim); /* Literal of log(1/sqrt(2*pi)) */
 
-    mag_static_arena_destroy(&scratch);
+    eco_arena_destroy(&scratch);
 
     return dist;
 }
@@ -644,7 +666,7 @@ bayla_mv_norm_dist_random_deviate(BayLaMVNormDist *dist, ElkRandomState *state, 
 }
 
 API BayLaLogValue 
-bayla_mv_norm_dist_prob(BayLaMVNormDist *dist, f64 *deviate, f64 *workspace)
+bayla_mv_norm_dist_prob(BayLaMVNormDist *dist, f64 const *deviate, f64 *workspace)
 {
     /* Calculate the displacement from the mean. */
     f64 *displacement = workspace;
@@ -674,22 +696,267 @@ bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
     return bayla_log_value_create(log_prob);
 }
 
-API f64 
-bayla_effective_sample_size(size nvals, BayLaLogValue *ws)
+API BayLaSamples 
+bayla_importance_sample(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc)
 {
-    BayLaLogValue sum = bayla_log_values_sum(nvals, ws);
+    /* Some scratch working space. This should be pretty small, so we'll go ahead and do it on the stack for now. */
+    byte buf[ECO_KiB(64)] = {0};
+    MagAllocator scratch_ = mag_allocator_static_arena_create(sizeof(buf), buf);
+    MagAllocator *scratch = &scratch_;
 
-    /* Square the values. */
-    for(size i = 0; i < nvals; ++i) { ws[i].val *= 2.0; }
+    /* Fixed sizes and indexes. */
+    size const ndim = model->n_parameters;
+    size const pidx = ndim + 0;
+    size const qidx = ndim + 1;
+    size const widx = ndim + 2;
+    size const ncols = ndim + 3;            /* The last 3 are Q, P, and W */
+    f64 *rows = eco_arena_nmalloc(alloc, ncols * n_samples, f64);
+    Assert(rows);
 
-    BayLaLogValue sum_sqs = bayla_log_values_sum(nvals, ws);
+    BayLaSamples samples = { .n_samples = n_samples, .ndim = ndim, .neff = NAN, .z_evidence = NAN, .rows = rows };
 
-    /* Undo square the values. */
-    for(size i = 0; i < nvals; ++i) { ws[i].val *= 0.5; }
+    ElkRandomState state_ = elk_random_state_create(12);
+    ElkRandomState *state = &state_;
 
-    BayLaLogValue neff = bayla_log_value_divide(bayla_log_value_power(sum, 2.0), sum_sqs);
+    /* The proposal distribution. */
+    f64 *prop_mean = eco_arena_nmalloc(scratch, ndim, f64);
+    model->posterior_max(model->user_data, ndim, prop_mean);
+    BayLaSquareMatrix prop_hessian = model->hessian_matrix(model->user_data, ndim, prop_mean, scratch);
+    BayLaMVNormDist prop_dist = bayla_mv_norm_dist_create_from_hessian(ndim, prop_mean, prop_hessian, scratch);
+    f64 *workspace = eco_arena_nmalloc(scratch, ndim, f64);
+    Assert(prop_dist.valid && workspace);
 
-    return bayla_log_value_map_out_of_log_domain(neff);
+    ElkKahanAccumulator w_acc = {0};
+    ElkKahanAccumulator w2_acc = {0};
+
+    for(size s = 0; s < n_samples; ++s)
+    {
+        f64 *row = &rows[s * ncols];
+        BayLaLogValue ld_qi = bayla_mv_norm_dist_random_deviate(&prop_dist, state, row, workspace);
+        BayLaLogValue ld_pi = bayla_model_evaluate(model, row);
+        row[pidx] = bayla_log_value_map_out_of_log_domain(ld_pi);
+        row[qidx] = bayla_log_value_map_out_of_log_domain(ld_qi);
+        row[widx] = row[pidx] / row[qidx];
+
+        w_acc = elk_kahan_accumulator_add(w_acc, row[widx]);
+        w2_acc = elk_kahan_accumulator_add(w2_acc, row[widx] * row[widx]);
+    }
+
+    samples.neff = w_acc.sum * w_acc.sum / w2_acc.sum;
+    samples.z_evidence = w_acc.sum / n_samples;
+
+    return samples;
+}
+
+API void 
+bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname)
+{
+    FILE *f = fopen(fname, "wb");
+
+    size const n_samples = samples->n_samples;
+    size const ndim = samples->ndim;
+    size const pidx = ndim + 0;
+    size const qidx = ndim + 1;
+    size const widx = ndim + 2;
+    size const ncols = ndim + 3;            /* The last 3 are Q, P, and W */
+
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 *row = &samples->rows[r * ncols];
+        for(size c = 0; c < ndim; ++c)
+        {
+            fprintf(f, "%.18e,", row[c]);
+        }
+        fprintf(f, "%.18e,%.18e,%.18e,%d\n", row[pidx], row[qidx], row[widx], row[pidx] >= ci_p_thresh ? 1 : 0);
+    }
+
+    fclose(f);
+}
+
+API f64 
+bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch)
+{
+    Assert(ci_pct > 0.0 && ci_pct <= 1.0);
+
+    size const n_samples = samples->n_samples;
+    size const ndim = samples->ndim;
+    size const ncols = ndim + 3;
+    size const pidx = ndim + 0;
+    size const widx = ndim + 2;
+
+    f64 total_weight = samples->z_evidence * n_samples;
+
+    f64 *row_scratch = eco_arena_nmalloc(&scratch, ncols * n_samples, f64);
+    Assert(row_scratch);
+
+    pak_radix_sort(
+            samples->rows,             /* The buffer to sort.                                      */
+            n_samples,                 /* The number of items in the buffer.                       */
+            pidx * sizeof(f64),        /* Offset into the object for the item we're sorting by.    */
+            sizeof(f64) * ncols,       /* The stride, or how large a single row is.                */
+            row_scratch,               /* Scratch memory for doing the search.                     */
+            PAK_RADIX_SORT_F64,        /* Sorting f64s.                                            */
+            PAK_SORT_DESCENDING);      /* Sort in descending order. We want the most weight first. */
+
+    ElkKahanAccumulator weight = {0};
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 *row = &samples->rows[r * ncols];
+        weight = elk_kahan_accumulator_add(weight, row[widx]);
+        if(weight.sum >= ci_pct * total_weight)
+        {
+            return row[pidx];
+        }
+    }
+
+    return NAN;
+}
+
+typedef struct
+{
+    f64 prob;
+    f64 wgt;
+    f64 x;
+} BayLaInternalCISortRecord;
+
+API BayLaCredibleInterval 
+bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch)
+{
+    Assert(ci_pct > 0.0 && ci_pct <= 1.0);
+    Assert(param_idx >= 0 && param_idx < samples->ndim);
+
+    size const n_samples = samples->n_samples;
+    size const ndim = samples->ndim;
+    size const ncols = ndim + 3;
+    size const pidx = ndim + 0;
+    size const widx = ndim + 2;
+    size const nbins = n_samples / 10;
+
+    f64 const total_weight = samples->z_evidence * n_samples;
+    f64 const *const rows = samples->rows;
+
+    /* Find the minimum and maximum values in our dataset. */
+    f64 min_x = DBL_MAX;
+    f64 max_x = -DBL_MAX;
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 const x = rows[r * ncols + param_idx];
+        min_x = min_x < x ? min_x : x;
+        max_x = max_x > x ? max_x : x;
+    }
+
+    /* Set up the bins and their values. */
+    f64 dx = (max_x - min_x) / nbins;
+    BayLaInternalCISortRecord *recs = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
+    for(size b = 0; b < nbins; ++b)
+    {
+        recs[b].x = min_x + b * dx + 0.5 * dx;
+    }
+
+    /* Project the data probability (counts) and weights onto the parameter axis. */
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 const x = rows[r * ncols + param_idx];
+        f64 const w = rows[r * ncols + widx];
+        f64 const p = rows[r * ncols + pidx];
+        size bin = (size)round((x - min_x) / dx);
+
+        recs[bin].prob += p;
+        recs[bin].wgt += w;
+    }
+
+    /* Sort in order of decreasing probability (count) */
+    BayLaInternalCISortRecord *sort_scratch = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
+    pak_radix_sort(
+            recs,                  /* The buffer to sort.                                   */
+            nbins,                 /* The number of items in the buffer.                    */
+            0,                     /* Offset into the object for the item we're sorting by. */
+            sizeof(*recs),         /* The stride, or how large a single row is.             */
+            sort_scratch,          /* Scratch memory for doing the search.                  */
+            PAK_RADIX_SORT_F64,    /* Sorting F64s.                                         */
+            PAK_SORT_DESCENDING);  /* Sort in descending order.                             */
+
+    BayLaCredibleInterval ci = {.low = DBL_MAX, .high = -DBL_MAX };
+    ElkKahanAccumulator weight = {0};
+    size bin = -1;
+    while(weight.sum < ci_pct * total_weight && bin < nbins - 1)
+    {
+        ++bin;
+        BayLaInternalCISortRecord rec = recs[bin];
+        weight = elk_kahan_accumulator_add(weight, rec.wgt);
+        ci.low = rec.x < ci.low ? rec.x : ci.low;
+        ci.high = rec.x > ci.high ? rec.x : ci.high;
+    }
+
+    if(ci.high < ci.low)
+    {
+        ci.high = ci.low = NAN;
+    }
+
+    return ci;
+}
+
+API BayLaErrorValue 
+bayla_samples_estimate_evidence(BayLaSamples *samples)
+{
+    size const n_samples = samples->n_samples;
+    size const ndim = samples->ndim;
+    size const ncols = ndim + 3;
+    size const widx = ndim + 2;
+    f64 const *rows = samples->rows;
+    f64 const z = samples->z_evidence;
+
+    ElkKahanAccumulator v_acc = {0};
+
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 const *row = &rows[r * ncols];
+        f64 dw = row[widx] - z;
+
+        v_acc = elk_kahan_accumulator_add(v_acc, dw * dw);
+    }
+
+    f64 std = sqrt(v_acc.sum / (n_samples * n_samples));
+
+    return (BayLaErrorValue){ .val = z, .std = std};
+}
+
+API BayLaErrorValue 
+bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud)
+{
+    size const n_samples = samples->n_samples;
+    size const ndim = samples->ndim;
+    size const ncols = ndim + 3;
+    size const widx = ndim + 2;
+    f64 const *rows = samples->rows;
+    f64 const total_weight = samples->z_evidence * n_samples;
+
+    ElkKahanAccumulator f_acc = {0};
+
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 const *row = &rows[r * ncols];
+        f64 w = row[widx];
+        f64 f = func(ndim, row, ud);
+
+        f_acc = elk_kahan_accumulator_add(f_acc, f * w);
+    }
+
+    f64 mean = f_acc.sum / total_weight;
+
+    ElkKahanAccumulator v_acc = {0};
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 const *row = &rows[r * ncols];
+        f64 w = row[widx];
+        f64 df = func(ndim, row, ud) * w - mean;
+
+        v_acc = elk_kahan_accumulator_add(v_acc, df * df);
+    }
+
+    f64 std = sqrt(v_acc.sum / (n_samples * n_samples));
+
+    return (BayLaErrorValue){ .val = mean, .std = std};
 }
 
 #pragma warning(pop)

@@ -1,15 +1,138 @@
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                      A simple, dummy model made of a 2d Gaussian
+ *-------------------------------------------------------------------------------------------------------------------------*/
 
-/*--------------------------------------------------------------------------------------------------------------------------
- *                                                 Run All Sampler Tests
- *------------------------------------------------------------------------------------------------------------------------*/
+typedef struct
+{
+    BayLaMVNormDist dist;
+    f64 *workspace;
+} Gauss2DLikelihoodTestArgs;
 
-#include <float.h>
-#include "../lib/packrat.h"
+static f64 
+dummy_log_prior(size num_parms, f64 const *parms, void *user_data)
+{
+    return 0.0;
+}
+
+static f64
+gauss_2d_likelihood(size num_parms, f64 const *parms, void *user_data)
+{
+    Assert(num_parms == 2);
+    Gauss2DLikelihoodTestArgs *args = user_data;
+    BayLaMVNormDist *dist = &args->dist;
+    f64 *workspace = args->workspace;
+
+    return bayla_mv_norm_dist_prob(dist, parms, workspace).val;
+}
 
 static void
-all_sampler_tests(void)
+gauss_2d_max_a_posteriori(void *user_data, size num_params, f64 *parms_out)
 {
-    printf("\n             Sampler Tests\n");
+    Gauss2DLikelihoodTestArgs *args = user_data;
+    BayLaMVNormDist *dist = &args->dist;
+
+    memcpy(parms_out, dist->mean, sizeof(f64) * num_params);
+}
+
+static BayLaSquareMatrix
+gauss_2d_hessian(void *user_data, size num_parms, f64 const *max_post_parms, MagAllocator *alloc)
+{
+    Gauss2DLikelihoodTestArgs *args = user_data;
+    BayLaMVNormDist *dist = &args->dist;
+    size const ndim = dist->ndim;
+
+    BayLaSquareMatrix hess = bayla_square_matrix_create(ndim, alloc);
+    memcpy(hess.data, dist->inv_cov.data, ndim * ndim * sizeof(f64));
+    for(size i = 0; i < ndim *ndim; ++i)
+    {
+        hess.data[i] *= -1.0;
+    }
+
+    return hess;
+}
+
+static inline f64
+get_param0(size ndim, f64 const *params, void *ud)
+{
+    return params[0];
+}
+
+static inline f64
+get_param1(size ndim, f64 const *params, void *ud)
+{
+    return params[1];
+}
+
+static void
+test_simple_model(void)
+{
+    printf("             ...Simple Model Tests\n");
+
+    MagAllocator alloc_ = mag_allocator_dyn_arena_create(ECO_MiB(2));
+    MagAllocator *alloc = &alloc_;
+    MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_MiB(4));
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+
+    /* The true distribution. */
+    f64 true_mean[2] = { -0.3, 0.8 };
+    BayLaSquareMatrix true_cov = bayla_square_matrix_create(2, alloc);
+    true_cov.data[0] = 2.0;
+    true_cov.data[1] = -0.0;
+    true_cov.data[2] = -0.0;
+    true_cov.data[3] = 0.5;
+
+    BayLaMVNormDist true_dist = bayla_mv_norm_dist_create(2, true_mean, true_cov, alloc);
+    Assert(true_dist.valid);
+    f64 *workspace = eco_arena_nmalloc(alloc, true_dist.ndim * 2, f64);
+
+    Gauss2DLikelihoodTestArgs args = { .dist = true_dist, .workspace = workspace };
+
+    BayLaModel model = 
+        {
+            .model_prior_probability = NAN,
+            .n_parameters = true_dist.ndim,
+            .prior = dummy_log_prior,
+            .likelihood = gauss_2d_likelihood,
+            .posterior_max = gauss_2d_max_a_posteriori,
+            .hessian_matrix = gauss_2d_hessian,
+            .user_data = &args
+        };
+
+    BayLaSamples samples = bayla_importance_sample(&model, 100000, 13, alloc);
+    BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
+    printf("\nndim = %2ld n_samples = %4ld neff = %4.0lf effective ratio = %4.2lf z_evidence = %e [%lf%%])\n",
+            samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 2.0 * z.std / z.val * 100);
+
+    f64 p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    printf("p_thresh = %lf\n", p_thresh);
+
+    BayLaCredibleInterval x0_ci = bayla_samples_calculate_ci(&samples, 0.95, 0, scratch);
+    BayLaCredibleInterval x1_ci = bayla_samples_calculate_ci(&samples, 0.95, 1, scratch);
+
+    BayLaErrorValue x0_exp = bayla_samples_calculate_expectation(&samples, get_param0, NULL);
+    BayLaErrorValue x1_exp = bayla_samples_calculate_expectation(&samples, get_param1, NULL);
+
+    printf("\n   Credible Intervals - x0: [ %lf -> %lf -> %lf]  x1: [ %lf -> %lf -> %lf ]\n",
+            x0_ci.low, x0_exp.val, x0_ci.high, x1_ci.low, x1_exp.val, x1_ci.high);
+    printf("Expectation (w/error) - x0: %lf ± %lf (%0.2lf%%) x1: %lf ± %lf (%0.2lf%%)\n",
+            x0_exp.val, 3.0 * x0_exp.std, 100.0 * fabs(3.0 * x0_exp.std / x0_exp.val),
+            x1_exp.val, 3.0 * x1_exp.std, 100.0 * fabs(3.0 * x1_exp.std / x1_exp.val));
+
+    bayla_samples_save_csv(&samples, p_thresh, "simple_model.csv");
+
+    eco_arena_destroy(&scratch);
+    eco_arena_destroy(alloc);
+}
+
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                               Crude Test of Components
+ *-------------------------------------------------------------------------------------------------------------------------*/
+
+void
+crude_sampler_tests(void)
+{
+    printf("             ...Crude Tests\n");
 
     MagAllocator alloc_ = mag_allocator_dyn_arena_create(ECO_MiB(2));
     MagAllocator *alloc = &alloc_;
@@ -79,54 +202,10 @@ all_sampler_tests(void)
         f64 mean_x1 = x1_acc.sum / w_acc.sum;
         f64 mean_x2 = x2_acc.sum / w_acc.sum;
 
-        /* Get the credible x1 interval */
-        pak_radix_sort(rows, n_samples, 0 * sizeof(f64), sizeof(f64) * n_cols, row_scratch, PAK_RADIX_SORT_F64, PAK_SORT_ASCENDING);
-        f64 min_range = DBL_MAX;
-        f64 xstart = NAN;
-        f64 xend = NAN;
-
-        size l = 0;
-        size r = 1;
-        f64 *lrow =  &rows[l * n_cols];
-        ElkKahanAccumulator total_weight = elk_kahan_accumulator_add((ElkKahanAccumulator){0}, lrow[4]);
-        while(l < n_samples)   
-        {
-            while(r < n_samples)
-            {
-                f64 *rrow = &rows[r * n_cols];
-                total_weight = elk_kahan_accumulator_add(total_weight, rrow[4]);
-
-                if(total_weight.sum >= ci_pct * w_acc.sum)
-                {
-                    f64 range = rrow[0] - lrow[0];
-                    if(range < min_range)
-                    {
-                        min_range = range;
-                        xstart = lrow[0];
-                        xend = rrow[0];
-                    }
-                    ++r;
-                    break;
-                }
-
-                ++r;
-            }
-
-            /* Remove the weight from the left most point. */
-            while(total_weight.sum >= ci_pct * w_acc.sum && l < n_samples)
-            {
-                total_weight = elk_kahan_accumulator_add(total_weight, -lrow[4]);
-                ++l;
-                lrow =  &rows[l * n_cols];
-            }
-
-            if(r >= n_samples) { break; }
-        }
-
         /* Get the credible interval (or area in this case) */
         pak_radix_sort(rows, n_samples, 2 * sizeof(f64), sizeof(f64) * n_cols, row_scratch, PAK_RADIX_SORT_F64, PAK_SORT_DESCENDING);
         size n_points = 0;
-        total_weight = (ElkKahanAccumulator){0};
+        ElkKahanAccumulator total_weight = {0};
         for(size r = 0; r < n_samples; ++r)
         {
             f64 *row = &rows[r * n_cols];
@@ -144,29 +223,10 @@ all_sampler_tests(void)
 
         if(n_points == 0) { n_points = n_samples; }
 
+        printf("n = %7ld neff = %7.0lf ratio = %5.3lf Z = %13.6e x1 = %5.2lf x2 = %5.2lf\n",
+                n_samples, neff, neff / n_samples, z, mean_x1, mean_x2);
+
 #if 0
-        printf("n_points / n_samples = %lf\n", (f64)n_points / (f64)n_samples);
-#endif
-
-        f64 x1_min = DBL_MAX;
-        f64 x1_max = -DBL_MAX;
-        f64 x2_min = DBL_MAX;
-        f64 x2_max = -DBL_MAX;
-
-        for(size r = 0; r < n_points; ++r)
-        {
-            f64 *row = &rows[r * n_cols];
-            x1_min = x1_min < row[0] ? x1_min : row[0];
-            x2_min = x2_min < row[1] ? x2_min : row[1];
-            x1_max = x1_max > row[0] ? x1_max : row[0];
-            x2_max = x2_max > row[1] ? x2_max : row[1];
-        }
-
-        printf("n = %7ld neff = %7.0lf ratio = %5.3lf Z = %13.6e x1 = %5.2lf [%5.2lf - %5.2lf] x2 = %5.2lf [%5.2lf - %5.2lf]",
-                n_samples, neff, neff / n_samples, z, mean_x1, x1_min, x1_max, mean_x2, x2_min, x2_max);
-        printf(" [%5.2lf - %5.2lf]\n", xstart, xend);
-
-#if 1
         char fname[100] = {0};
         snprintf(fname, sizeof(fname), "samples_%ld.csv", n_samples);
         FILE *f = fopen(fname, "wb");
@@ -185,3 +245,21 @@ all_sampler_tests(void)
 
     mag_allocator_destroy(alloc);
 }
+
+/*--------------------------------------------------------------------------------------------------------------------------
+ *                                                 Run All Sampler Tests
+ *------------------------------------------------------------------------------------------------------------------------*/
+static void
+all_sampler_tests(void)
+{
+    printf("\n             Sampler Tests\n");
+
+#if 0
+    crude_sampler_tests();
+#endif
+
+#if 1
+    test_simple_model();
+#endif
+}
+
