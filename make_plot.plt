@@ -1,6 +1,6 @@
 set datafile separator ","
 
-fn = "samples_1000.csv"
+fn = "simple_model.csv"
 
 set palette rgb 33,13,10
 set grid
