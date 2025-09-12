@@ -606,10 +606,10 @@ bayla_mv_norm_dist_create_from_hessian(size ndim, f64 *mean, BayLaSquareMatrix h
     dist.mean = dist_mean;
 
     dist.inv_cov = bayla_square_matrix_create(ndim, alloc);
-    memcpy(dist.inv_cov.data, hessian.data, sizeof(f64) * ndim * ndim);
-    for(size i = 0; i < ndim * ndim; ++i) { dist.inv_cov.data[i] *= -1; }
+    for(size i = 0; i < ndim * ndim; ++i) { dist.inv_cov.data[i] = -hessian.data[i]; }
 
     dist.cov = bayla_square_matrix_invert(dist.inv_cov, alloc, scratch);
+    for(size i = 0; i < ndim; ++i) { Assert(dist.cov.data[MATRIX_IDX(i, i, ndim)] > 0.0); } /* Check positive variance. */
 
     dist.chol = bayla_cholesky_decomp(dist.cov, alloc);
     dist.valid = dist.chol.valid;
@@ -1006,7 +1006,7 @@ static inline f64
 
 bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch)
 {
-    BayLaSamples samples = bayla_importance_sample(model, sf, n_samples, seed, &scratch);
+    BayLaSamples samples = bayla_importance_sample(model, exp(sf), n_samples, seed, &scratch);
 
     return samples.valid ? -samples.neff : NAN;
 }
@@ -1023,19 +1023,18 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
 
     f64 *max_a_posteriori_parms = eco_arena_nmalloc(&scratch, model->n_parameters, f64);
     model->posterior_max(model->user_data, model->n_parameters, max_a_posteriori_parms);
-    f64 max_density = bayla_log_value_map_out_of_log_domain(bayla_model_evaluate(model, max_a_posteriori_parms));
+    f64 max_density = bayla_model_evaluate(model, max_a_posteriori_parms).val;
 
     f64 ax = max_density;
     f64 fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch);
 
-    f64 bx = 0.5 * max_density;
+    f64 bx = max_density + log(0.5);;
     f64 fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch);
 
     if(fb > fa) { swap(&ax, &bx); swap(&fa, &fb); }
 
     f64 cx = bx + GOLD * (bx - ax);
     f64 fc = bayla_evaluate_samples_for_ess(cx, model, n_samples, seed, scratch);
-    Assert(cx >= 0.0);
 
     f64 fu = NAN;
     while(fb > fc)
@@ -1105,6 +1104,7 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
 {
     BayLaBracketPoints bp = bayla_bracket_minima(model, n_samples, seed, scratch);
     printf("xa = %e xb = %e xc = %e\n", bp.xa, bp.xb, bp.xc);
+    printf("fa = %e fb = %e fc = %e\n", bp.fxa, bp.fxb, bp.fxc);
 
     size const ITMAX = 1000;
     f64 const CGOLD = 0.3819660;
@@ -1131,7 +1131,7 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
         f64 xm = 0.5 * (a + b);
         f64 tol1 = tol * fabs(x) + ZEPS;
         f64 tol2 = 2.0 * tol1;
-        if(fabs(x - xm) <= (tol2 - 0.5 *(b - a))) { return (BayLaMinimizationPair){ .xmin = x, .fmin = fx }; }
+        if(fabs(x - xm) <= (tol2 - 0.5 *(b - a))) { return (BayLaMinimizationPair){ .xmin = exp(x), .fmin = fx }; }
         if(fabs(e) > tol1)
         {
             f64 r = (x - w) * (fx - fv);
@@ -1193,6 +1193,7 @@ API BayLaSamples
 bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch)
 {
     BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch);
+    printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
 
     return bayla_importance_sample(model, min_result.xmin, n_samples, seed, alloc);
 }

@@ -248,8 +248,8 @@ BayLaModel constant_model =
 
 /*---------------------------------------------------  Linear Model  -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a linear coefficent, parameter 2 is a standard deviation. */
-f64 linear_model_min_parms[3] = {-2.0, 0.0, log_model_min_sigma };
-f64 linear_model_max_parms[3] = { 0.0, 4.0, log_model_max_sigma };
+f64 linear_model_min_parms[3] = {-2.0, -2.0, log_model_min_sigma };
+f64 linear_model_max_parms[3] = { 2.0,  4.0, log_model_max_sigma };
 
 static f64 
 linear_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -325,14 +325,17 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
     f64 v0 = max_a_posteriori_parms[0];
     f64 v0_min = linear_model_min_parms[0];
     f64 v0_max = linear_model_max_parms[0];
+    Assert(v0 > v0_min && v0 < v0_max);
 
     f64 b = max_a_posteriori_parms[1];
     f64 b_min = linear_model_min_parms[1];
     f64 b_max = linear_model_max_parms[1];
+    Assert(b > b_min && b < b_max);
 
     f64 sigma = max_a_posteriori_parms[2];
     f64 sigma_min = linear_model_min_parms[2];
     f64 sigma_max = linear_model_max_parms[2];
+    Assert(sigma > sigma_min && sigma < sigma_max);
 
     UserData *data = user_data;
     f64 N = (f64)data->N;
@@ -344,17 +347,17 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
 
     f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
 
-    BayLaSquareMatrix hess = bayla_square_matrix_create(2, alloc);
+    BayLaSquareMatrix hess = bayla_square_matrix_create(3, alloc);
 
     f64 prior = -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min) * (b_max - b_min));
     f64 likelihood = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
     f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
     f64 sigma4 = sigma2 * sigma2;
-
+    f64 beta = (xy_bar - x_bar * y_bar) / (x_sq_bar - x_bar * x_bar);
 
     hess.data[MATRIX_IDX(2, 0, 3)] = 0;
-    hess.data[MATRIX_IDX(2, 1, 3)] = p * (2.0 * N / sigma2 * (x_bar * y_bar - xy_bar));
+    hess.data[MATRIX_IDX(2, 1, 3)] = p * (2.0 * N / sigma2 / sigma * (x_bar * y_bar - xy_bar + beta * (x_sq_bar - x_bar * x_bar)));
     hess.data[MATRIX_IDX(2, 2, 3)] = p * ((N +  1.0) / sigma2 - 3.0 * N * Q / sigma4);
 
     hess.data[MATRIX_IDX(1, 0, 3)] = -p *(N * x_bar / sigma2);
@@ -364,6 +367,8 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
     hess.data[MATRIX_IDX(0, 0, 3)] = -p * (N / sigma2);
     hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)];
     hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)];
+
+    Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0);
 
     return hess;
 }
