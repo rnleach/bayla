@@ -169,7 +169,7 @@ typedef struct
     size n_samples;
     size ndim;
     f64 neff;
-    f64 z_evidence;
+    BayLaLogValue z_evidence;
     f64 *rows;             /* n_samples x (ndim + 3) */
     b32 valid;
 } BayLaSamples;
@@ -726,7 +726,7 @@ bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 see
             .n_samples = n_samples,
             .ndim = ndim,
             .neff = NAN,
-            .z_evidence = NAN,
+            .z_evidence = (BayLaLogValue){ .val = NAN},
             .rows = rows,
             .valid = true
         };
@@ -777,7 +777,7 @@ bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 see
 
     /* w_acc^2 / w2_acc */
     samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(bayla_log_value_power(w_acc, 2), w2_acc));
-    samples.z_evidence = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(w_acc, l_n_samples));
+    samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
 
     return samples;
 }
@@ -835,7 +835,7 @@ bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAlloca
     size const pidx = ndim + 0;
     size const widx = ndim + 2;
 
-    f64 total_weight = samples->z_evidence * n_samples;
+    f64 total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
 
     f64 *row_scratch = eco_arena_nmalloc(&scratch, ncols * n_samples, f64);
     Assert(row_scratch);
@@ -883,7 +883,7 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
     size const widx = ndim + 2;
     size const nbins = n_samples / 10;
 
-    f64 const total_weight = samples->z_evidence * n_samples;
+    f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
     f64 const *const rows = samples->rows;
 
     /* Find the minimum and maximum values in our dataset. */
@@ -955,7 +955,7 @@ bayla_samples_estimate_evidence(BayLaSamples *samples)
     size const ncols = ndim + 3;
     size const widx = ndim + 2;
     f64 const *rows = samples->rows;
-    f64 const z = samples->z_evidence;
+    f64 const z = bayla_log_value_map_out_of_log_domain(samples->z_evidence);
 
     ElkKahanAccumulator v_acc = {0};
 
@@ -980,7 +980,7 @@ bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f
     size const ncols = ndim + 3;
     size const widx = ndim + 2;
     f64 const *rows = samples->rows;
-    f64 const total_weight = samples->z_evidence * n_samples;
+    f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
 
     ElkKahanAccumulator f_acc = {0};
 
