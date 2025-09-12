@@ -35,13 +35,13 @@ set size 1,1
 set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Log Model Test"
 
 set title "Q"
-plot fn using 1:3:(exp($3)) with points palette pt 7 notitle
+plot fn using 1:(exp($3)):(exp($3)) with points palette pt 7 notitle
 set title "P"
-plot fn using 1:2:(exp($2)) with points palette pt 7 notitle
+plot fn using 1:(exp($2)):(exp($2)) with points palette pt 7 notitle
 set title "Credible Interval"
-plot fn using 1:2:5 with points palette pt 7 notitle
+plot fn using 1:(exp($2)):5 with points palette pt 7 notitle
 set title "W"
-plot fn using 1:4:(exp($4)) with points palette pt 7 notitle
+plot fn using 1:(exp($4)):(exp($4)) with points palette pt 7 notitle
 
 unset multiplot
 
