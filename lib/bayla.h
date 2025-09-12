@@ -98,13 +98,13 @@ API BayLaLogValue bayla_log_value_multiply(BayLaLogValue left, BayLaLogValue rig
 API BayLaLogValue bayla_log_value_divide(BayLaLogValue numerator, BayLaLogValue denominator);
 API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val);
 API BayLaLogValue bayla_log_value_power(BayLaLogValue base, f64 exponent);
-API BayLaLogValue bayla_log_values_sum(size nvals, BayLaLogValue *vals);
+API BayLaLogValue bayla_log_values_sum(size nvals, size offset, size stride, BayLaLogValue *vals);
 
 /* Functions that have less overflow / underflow / rounding errors than naive implementations.  */
-API f64 bayla_log1mexp(f64 x);                       /* log(1 - exp(-x))                        */
-API f64 bayla_log1pexp(f64 x);                       /* log(1 + exp(+x))                        */
-API f64 bayla_logsumexp(f64 x, f64 y);               /* add two numbers in the log domain.      */
-API f64 bayla_logsumexp_list(size nvals, f64 *vals); /* Sum a list of values in the log domain. */
+API f64 bayla_log1mexp(f64 x);                                                 /* log(1 - exp(-x))                        */
+API f64 bayla_log1pexp(f64 x);                                                 /* log(1 + exp(+x))                        */
+API f64 bayla_logsumexp(f64 x, f64 y);                                         /* add two numbers in the log domain.      */
+API f64 bayla_logsumexp_list(size nvals, size offset, size stride, f64 *vals); /* Sum a list of values in the log domain. */
 
 BayLaLogValue const bayla_log_zero = { .val = -INFINITY };
 BayLaLogValue const bayla_log_one = { .val = 0.0 };
@@ -208,6 +208,10 @@ API BayLaSamples bayla_importance_sample_optimize(BayLaModel const *model, size 
  *
  *
  *-------------------------------------------------------------------------------------------------------------------------*/
+
+/* Make sure these are always binary compatible. */
+_Static_assert(sizeof(BayLaLogValue) == sizeof(f64));
+_Static_assert(_Alignof(BayLaLogValue) == _Alignof(f64));
 
 API BayLaSquareMatrix 
 bayla_square_matrix_create(i32 ndim, MagAllocator *alloc)
@@ -454,10 +458,10 @@ bayla_log_value_power(BayLaLogValue base, f64 exponent)
 _Static_assert(sizeof(BayLaLogValue) == sizeof(f64), "BayLaLogValue not wrapper for f64 (double)");
 
 API BayLaLogValue 
-bayla_log_values_sum(size nvals, BayLaLogValue *vals)
+bayla_log_values_sum(size nvals, size offset, size stride, BayLaLogValue *vals)
 {
     f64 *log_vals = (f64 *)vals;
-    f64 log_sum = bayla_logsumexp_list(nvals, log_vals);
+    f64 log_sum = bayla_logsumexp_list(nvals, offset, stride, log_vals);
     return (BayLaLogValue){ .val = log_sum };
 }
 
@@ -493,20 +497,22 @@ bayla_logsumexp(f64 x, f64 y)
 }
 
 API f64 
-bayla_logsumexp_list(size nvals, f64 *vals)
+bayla_logsumexp_list(size nvals, size offset, size stride, f64 *vals)
 {
     /* Use a two pass algorithm, first find the max, then scale and apply addition at higher precision. */
     f64 max = -INFINITY;
     for(size i = 0; i < nvals; ++i)
     {
-        if(vals[i] > max) { max = vals[i]; }
+        size idx = i * stride + offset;
+        if(vals[idx] > max) { max = vals[idx]; }
     }
     Assert(max > - INFINITY);
 
     ElkKahanAccumulator result = {0};
     for(size i = 0; i < nvals; ++i)
     {
-        result = elk_kahan_accumulator_add(result, exp(vals[i] - max));
+        size idx = i * stride + offset;
+        result = elk_kahan_accumulator_add(result, exp(vals[idx] - max));
     }
 
     return max + log(result.sum);
