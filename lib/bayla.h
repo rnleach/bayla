@@ -189,7 +189,7 @@ typedef struct
 /* sf is the spread factor, it means multiply the variance of the Gaussian proposal distribution to get more sampling
  * in the tails.
  */
-API BayLaSamples bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc);
+API BayLaSamples bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
 API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname);
 API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
@@ -200,7 +200,7 @@ API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f
 /* Since we can only know the Hessian to within a constant factor, this optomizes the scale factor to maximize the effective
  * sample size.
  */
-API BayLaSamples bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
+API BayLaSamples bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
 /*---------------------------------------------------------------------------------------------------------------------------
  *
  *
@@ -708,11 +708,8 @@ bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
 }
 
 API BayLaSamples 
-bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc)
+bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_)
 {
-    /* Some scratch working space. This should be pretty small, so we'll go ahead and do it on the stack for now. */
-    byte buf[ECO_KiB(64)] = {0};
-    MagAllocator scratch_ = mag_allocator_static_arena_create(sizeof(buf), buf);
     MagAllocator *scratch = &scratch_;
 
     /* Fixed sizes and indexes. */
@@ -734,7 +731,7 @@ bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 see
             .valid = true
         };
 
-    ElkRandomState state_ = elk_random_state_create(12);
+    ElkRandomState state_ = elk_random_state_create(seed);
     ElkRandomState *state = &state_;
 
     /* The proposal distribution. */
@@ -1025,11 +1022,11 @@ static inline void swap(f64 *a, f64 *b) { f64 tmp = *a; *a = *b; *b = tmp; }
 static inline f64 sign(f64 const a, f64 const b) { return b >= 0.0 ? (a >= 0.0 ? a : -a) : (a >= 0.0 ? -a : a); }
 static inline f64 max(f64 const a, f64 const b) { return a >= b ? a : b; }
 static inline f64 min(f64 const a, f64 const b) { return a <= b ? a : b; }
-static inline f64
 
-bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch)
+static inline f64
+bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
 {
-    BayLaSamples samples = bayla_importance_sample(model, exp(sf), n_samples, seed, &scratch);
+    BayLaSamples samples = bayla_importance_sample(model, exp(sf), n_samples, seed, &scratch1, scratch2);
 
     return samples.valid ? -samples.neff : NAN;
 }
@@ -1038,26 +1035,26 @@ bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, 
  * It's just easier that way because the algorithm was written for bracketing a minima.
  */
 static BayLaBracketPoints
-bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch)
+bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
 {
     f64 const GOLD = 1.618034;
     f64 const GLIMIT = 10.0;
     f64 const TINY = 1.0e-20;
 
-    f64 *max_a_posteriori_parms = eco_arena_nmalloc(&scratch, model->n_parameters, f64);
+    f64 *max_a_posteriori_parms = eco_arena_nmalloc(&scratch1, model->n_parameters, f64);
     model->posterior_max(model->user_data, model->n_parameters, max_a_posteriori_parms);
     f64 max_density = bayla_model_evaluate(model, max_a_posteriori_parms).val;
 
     f64 ax = max_density;
-    f64 fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch);
+    f64 fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch1, scratch2);
 
     f64 bx = max_density + log(0.5);;
-    f64 fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch);
+    f64 fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch1, scratch2);
 
     if(fb > fa) { swap(&ax, &bx); swap(&fa, &fb); }
 
     f64 cx = bx + GOLD * (bx - ax);
-    f64 fc = bayla_evaluate_samples_for_ess(cx, model, n_samples, seed, scratch);
+    f64 fc = bayla_evaluate_samples_for_ess(cx, model, n_samples, seed, scratch1, scratch2);
 
     f64 fu = NAN;
     while(fb > fc)
@@ -1069,7 +1066,7 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
 
         if((bx - u) * (u - cx) > 0.0)
         {
-            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch);
+            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
             if(fu < fc)
             {
                 ax = bx; fa = fb;
@@ -1083,27 +1080,27 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
             }
 
             u = cx + GOLD * (cx - bx);
-            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch);
+            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
         }
         else if ((cx - u) * (u - ulim) > 0.0)
         {
-            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch);
+            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
             if(fu < fc)
             {
                 shft3(&bx, &cx, &u, u + GOLD * (u - cx));
-                shft3(&fb, &fc, &fu, bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch));
+                shft3(&fb, &fc, &fu, bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2));
             }
 
         }
         else if ((u - ulim) * (ulim - cx) >= 0.0)
         {
             u = ulim;
-            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch);
+            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
         }
         else
         {
             u = cx + GOLD * (cx - bx);
-            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch);
+            fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
         }
 
         shft3(&ax, &bx, &cx, u);
@@ -1123,9 +1120,9 @@ typedef struct
  * It's just easier that way because the algorithm was written for bracketing a minima.
  */
 static BayLaMinimizationPair
-bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch)
+bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
 {
-    BayLaBracketPoints bp = bayla_bracket_minima(model, n_samples, seed, scratch);
+    BayLaBracketPoints bp = bayla_bracket_minima(model, n_samples, seed, scratch1, scratch2);
     //printf("xa = %e xb = %e xc = %e\n", bp.xa, bp.xb, bp.xc);
     //printf("fa = %e fb = %e fc = %e\n", bp.fxa, bp.fxb, bp.fxc);
 
@@ -1144,7 +1141,7 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
     f64 v = bp.xb;
     f64 u = NAN;
 
-    f64 fx = bayla_evaluate_samples_for_ess(x, model, n_samples, seed, scratch);
+    f64 fx = bayla_evaluate_samples_for_ess(x, model, n_samples, seed, scratch1, scratch2);
     f64 fw = fx;
     f64 fv = fx;
     f64 fu = NAN;
@@ -1184,7 +1181,7 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
         }
 
         u = fabs(d) >= tol1 ? x + d : x + sign(tol1, d);
-        fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch);
+        fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
 
         if(fu <= fx)
         {
@@ -1213,12 +1210,12 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
 }
 
 API BayLaSamples 
-bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch)
+bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2)
 {
-    BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch);
+    BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch1, scratch2);
     //printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
 
-    return bayla_importance_sample(model, min_result.xmin, n_samples, seed, alloc);
+    return bayla_importance_sample(model, min_result.xmin, n_samples, seed, alloc, scratch1);
 }
 
 #pragma warning(pop)

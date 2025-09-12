@@ -786,7 +786,7 @@ BayLaModel fifth_order_model =
 
 /*---------------------------------------------------  Test Models   -----------------------------------------------------*/
 static inline void
-test_log_model(MagAllocator alloc_, MagAllocator scratch)
+test_log_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2)
 {
     CoyProfileAnchor ap = {0};
     char *model_name = "Log";
@@ -794,9 +794,9 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch)
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  Log Model - sample");
-    BayLaSamples samples = bayla_importance_sample_optimize(&log_model, 1000, 13, alloc, scratch);
+    BayLaSamples samples = bayla_importance_sample_optimize(&log_model, 1000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
     printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
@@ -806,7 +806,7 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch)
 }
 
 static inline void
-test_constant_model(MagAllocator alloc_, MagAllocator scratch)
+test_constant_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2)
 {
     CoyProfileAnchor ap = {0};
     char *model_name = "Constant";
@@ -814,9 +814,9 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch)
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  Constant Model - sample");
-    BayLaSamples samples = bayla_importance_sample_optimize(&constant_model, 10000, 13, alloc, scratch);
+    BayLaSamples samples = bayla_importance_sample_optimize(&constant_model, 10000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
     printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
@@ -826,7 +826,7 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch)
 }
 
 static inline void
-test_linear_model(MagAllocator alloc_, MagAllocator scratch)
+test_linear_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2)
 {
     CoyProfileAnchor ap = {0};
     char *model_name = "Linear";
@@ -834,9 +834,9 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch)
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  Linear Model - sample");
-    BayLaSamples samples = bayla_importance_sample_optimize(&linear_model, 100000, 13, alloc, scratch);
+    BayLaSamples samples = bayla_importance_sample_optimize(&linear_model, 10000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
     printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
@@ -851,9 +851,9 @@ all_evidence_tests(void)
 {
     printf("\n             Evidence Tests\n\n");
 
-    MagAllocator alloc = mag_allocator_dyn_arena_create(ECO_GiB(1));
-    MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_GiB(1));
-    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+    MagAllocator alloc = mag_allocator_dyn_arena_create(ECO_MiB(2));
+    MagAllocator scratch1 = mag_allocator_dyn_arena_create(ECO_MiB(2));
+    MagAllocator scratch2 = mag_allocator_dyn_arena_create(ECO_MiB(2));
 
     CoyProfileAnchor ap_all = COY_START_PROFILE_BLOCK("Evidence Tests");
     CoyProfileAnchor ap = {0};
@@ -866,18 +866,19 @@ all_evidence_tests(void)
             "Model Name", "ndim", "n_samples", "neff", "effective ratio", "z_evidence");
 
     ap = COY_START_PROFILE_BLOCK("Evidence Tests Log Model");
-    test_log_model(alloc, scratch);
+    test_log_model(alloc, scratch1, scratch2);
     COY_END_PROFILE(ap);
 
     ap = COY_START_PROFILE_BLOCK("Evidence Tests Const Model");
-    test_constant_model(alloc, scratch);
+    test_constant_model(alloc, scratch1, scratch2);
     COY_END_PROFILE(ap);
 
     ap = COY_START_PROFILE_BLOCK("Evidence Tests Linear Model");
-    test_linear_model(alloc, scratch);
+    test_linear_model(alloc, scratch1, scratch2);
     COY_END_PROFILE(ap);
 
-    eco_arena_destroy(&scratch);
+    eco_arena_destroy(&scratch2);
+    eco_arena_destroy(&scratch1);
     eco_arena_destroy(&alloc);
 
     COY_END_PROFILE(ap_all);
