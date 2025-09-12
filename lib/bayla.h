@@ -755,24 +755,29 @@ bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 see
     f64 *workspace = eco_arena_nmalloc(scratch, ndim, f64);
     Assert(prop_dist.valid && workspace);
 
-    ElkKahanAccumulator w_acc = {0};
-    ElkKahanAccumulator w2_acc = {0};
+    BayLaLogValue *ws = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
+    BayLaLogValue *w2s = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
 
     for(size s = 0; s < n_samples; ++s)
     {
         f64 *row = &rows[s * ncols];
         BayLaLogValue ld_qi = bayla_mv_norm_dist_random_deviate(&prop_dist, state, row, workspace);
         BayLaLogValue ld_pi = bayla_model_evaluate(model, row);
-        row[pidx] = bayla_log_value_map_out_of_log_domain(ld_pi);
-        row[qidx] = bayla_log_value_map_out_of_log_domain(ld_qi);
-        row[widx] = row[pidx] / row[qidx];
+        row[pidx] = ld_pi.val;
+        row[qidx] = ld_qi.val;
+        row[widx] = row[pidx] - row[qidx];
 
-        w_acc = elk_kahan_accumulator_add(w_acc, row[widx]);
-        w2_acc = elk_kahan_accumulator_add(w2_acc, row[widx] * row[widx]);
+        ws[s] = bayla_log_value_create(row[widx]);
+        w2s[s] = bayla_log_value_power(ws[s], 2.0);
     }
 
-    samples.neff = w_acc.sum * w_acc.sum / w2_acc.sum;
-    samples.z_evidence = w_acc.sum / n_samples;
+    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
+    BayLaLogValue w2_acc = bayla_log_values_sum(n_samples, 0, 1, w2s);
+    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain(n_samples);
+
+    /* w_acc^2 / w2_acc */
+    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(bayla_log_value_power(w_acc, 2), w2_acc));
+    samples.z_evidence = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(w_acc, l_n_samples));
 
     return samples;
 }
@@ -848,7 +853,7 @@ bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAlloca
     for(size r = 0; r < n_samples; ++r)
     {
         f64 *row = &samples->rows[r * ncols];
-        weight = elk_kahan_accumulator_add(weight, row[widx]);
+        weight = elk_kahan_accumulator_add(weight, exp(row[widx]));
         if(weight.sum >= ci_pct * total_weight)
         {
             return row[pidx];
@@ -903,8 +908,8 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
     for(size r = 0; r < n_samples; ++r)
     {
         f64 const x = rows[r * ncols + param_idx];
-        f64 const w = rows[r * ncols + widx];
-        f64 const p = rows[r * ncols + pidx];
+        f64 const w = exp(rows[r * ncols + widx]);
+        f64 const p = exp(rows[r * ncols + pidx]);
         size bin = (size)round((x - min_x) / dx);
 
         recs[bin].prob += p;
@@ -957,7 +962,7 @@ bayla_samples_estimate_evidence(BayLaSamples *samples)
     for(size r = 0; r < n_samples; ++r)
     {
         f64 const *row = &rows[r * ncols];
-        f64 dw = row[widx] - z;
+        f64 dw = exp(row[widx]) - z;
 
         v_acc = elk_kahan_accumulator_add(v_acc, dw * dw);
     }
@@ -982,7 +987,7 @@ bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f
     for(size r = 0; r < n_samples; ++r)
     {
         f64 const *row = &rows[r * ncols];
-        f64 w = row[widx];
+        f64 w = exp(row[widx]);
         f64 f = func(ndim, row, ud);
 
         f_acc = elk_kahan_accumulator_add(f_acc, f * w);
