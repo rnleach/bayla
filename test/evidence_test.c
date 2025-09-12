@@ -1,16 +1,3 @@
-/*-------------------------------------------------- Utility Functions ----------------------------------------------------*/
-f64
-percentile(size num, f64 *vals, f64 target, MagStaticArena scratch)
-{
-    f64 *work_space = eco_arena_nmalloc(&scratch, num, f64);
-
-    pak_radix_sort(vals, num, 0, sizeof(f64), work_space, PAK_RADIX_SORT_F64, PAK_SORT_ASCENDING);
-
-    size less;
-    for(less = 0; less < num && target > vals[less]; ++less);
-    return (f64)less / (f64)num * 100.0;
-}
-
 /*-------------------------------------------------- Data Gen Function ----------------------------------------------------*/
 
 static inline f64
@@ -22,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 100
+#define NUM_DATA_POINTS 10
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -63,17 +50,25 @@ f64 global_xs[NUM_DATA_POINTS];
 f64 global_ys[NUM_DATA_POINTS];
 
 /*-------------------------------------------------  Logarithmic Model  --------------------------------------------------*/
-/* parameter 0 a standard deviation. */
-f64 log_min_parms[1] = {0.0};
-f64 log_max_parms[1] = {20.0};
+static f64 const log_model_min_sigma = 1.0e-5;
+static f64 const log_model_max_sigma = 10.0;
 
-static f64 log_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
+/* parameter 0 a standard deviation. */
+static f64
+log_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    /* exponential with mean 1 */
-    return -parms[0] - bayla_log1mexp(log_max_parms[0]);
+    f64 sigma = parms[0];
+    if(sigma < log_model_min_sigma || sigma > log_model_max_sigma)
+    {
+        return -INFINITY;
+    }
+
+    //return -log(sigma) - log(log(log_model_max_sigma / log_model_min_sigma));
+    return -log(sigma) - 0x1.5019f30f634a0p1;
 }
 
-static f64 log_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
+static f64
+log_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
     UserData *data = user_data;
     f64 N = (f64)data->N;
@@ -84,10 +79,51 @@ static f64 log_parameters_log_likelihood(size num_parms, f64 const *parms, void 
 
     data->ncalls++;
 
-    f64 log_prob = -N * (log(sigma) + 0.5 * log(2.0 * ELK_PI));
-    log_prob -= N * (y_sq_bar - 2.0 * y_logx_bar + logx_sq_bar) / (2.0 * sigma * sigma);
+    f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
+    f64 log_prob =  -N * 0.5 * log(2.0 * ELK_PI) - N * sigma - 0.5 * N * Q / (sigma * sigma);
+    //f64 log_prob =  N * (-0x1.d67f1c864beb4p-1 - sigma - 0.5 * Q / (sigma * sigma));
 
     return log_prob;
+}
+
+static void
+log_model_max_a_posteriori(void *user_data, size num_params, f64 *params_out)
+{
+    Assert(num_params == 1);
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 y_logx_bar = data->y_logx_bar;
+    f64 logx_sq_bar = data->logx_sq_bar;
+
+    f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
+    params_out[0] = sqrt(N * Q / (N + 1.0));
+}
+
+static BayLaSquareMatrix
+log_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_posteriori_params, MagAllocator *alloc)
+{
+    Assert(num_params == 1);
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 sigma = max_a_posteriori_params[0];
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 y_logx_bar = data->y_logx_bar;
+    f64 logx_sq_bar = data->logx_sq_bar;
+
+    f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
+
+    BayLaSquareMatrix hess = bayla_square_matrix_create(1, alloc);
+    hess.data[0] = pow(2.0 * ELK_PI, - N / 2.0) / log(log_model_max_sigma / log_model_min_sigma);
+    f64 sigma2 = sigma * sigma;
+    f64 sigma4 = sigma2 * sigma2;
+    hess.data[0] *= pow(sigma, -(N + 1)) * exp(- 0.5 * N * Q / sigma2) * ((N + 1) / sigma2 - (3.0 * N * Q / sigma4));
+
+    Assert(hess.data[0] < 0.0);
+
+    return hess;
 }
 
 UserData log_user_data = {0};
@@ -96,39 +132,105 @@ BayLaModel log_model =
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 1,
-        .prior = log_parameters_log_prior,
-        .likelihood = log_parameters_log_likelihood,
-        .min_parameter_vals = log_min_parms,
-        .max_parameter_vals = log_max_parms,
+        .prior = log_model_log_prior,
+        .likelihood = log_model_log_likelihood,
+        .posterior_max = log_model_max_a_posteriori,
+        .hessian_matrix = log_model_2d_hessian,
         .user_data = &log_user_data
     };
 
 /*--------------------------------------------------- Constant Model -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a standard deviation. */
-f64 constant_min_parms[2] = {-2.0, 0.0};
-f64 constant_max_parms[2] = { 2.0, 20.0};
+f64 constant_model_min_parms[2] = {-2.0, log_model_min_sigma };
+f64 constant_model_max_parms[2] = { 2.0, log_model_max_sigma };
 
-static f64 constant_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
+static f64 
+constant_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 4.0)) - parms[1] - bayla_log1mexp(constant_max_parms[1]);
+    f64 v0 = parms[0];
+    f64 v0_min = constant_model_min_parms[0];
+    f64 v0_max = constant_model_max_parms[0];
+
+    f64 sigma = parms[1];
+    f64 sigma_min = constant_model_min_parms[1];
+    f64 sigma_max = constant_model_max_parms[1];
+
+    if(sigma < sigma_min || sigma > sigma_max || v0 < v0_min || v0 > v0_max)
+    {
+        return -INFINITY;
+    }
+
+    return -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min));
 }
 
-static f64 constant_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
+static f64 
+constant_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
+    f64 v0 = parms[0];
+    f64 sigma = parms[1];
+
     UserData *data = user_data;
     f64 N = (f64)data->N;
-    f64 c = parms[0];
-    f64 sigma = parms[1];
     f64 y_bar = data->y_bar;
     f64 y_sq_bar = data->y_sq_bar;
 
     data->ncalls++;
 
     f64 log_prob = -N * (log(sigma) + 0.5 * log(2.0 * ELK_PI));
-    log_prob -= N * (y_sq_bar - 2.0 * y_bar * c + c * c) / (2.0 * sigma * sigma);
+    log_prob -= N * (y_sq_bar - 2.0 * y_bar * v0 + v0 * v0) / (2.0 * sigma * sigma);
 
     return log_prob;
+}
+
+static void
+constant_model_max_a_posteriori(void *user_data, size num_params, f64 *params_out)
+{
+    Assert(num_params == 2);
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_bar = data->y_bar;
+    f64 y_sq_bar = data->y_sq_bar;
+
+    params_out[0] = y_bar;
+    params_out[1] = sqrt((N / (N + 1.0)) * (y_sq_bar - y_bar * y_bar));
+}
+
+static BayLaSquareMatrix
+constant_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_posteriori_params, MagAllocator *alloc)
+{
+    Assert(num_params == 2);
+
+    f64 v0 = max_a_posteriori_params[0];
+    f64 v0_min = constant_model_min_parms[0];
+    f64 v0_max = constant_model_max_parms[0];
+
+    f64 sigma = max_a_posteriori_params[1];
+    f64 sigma_min = constant_model_min_parms[1];
+    f64 sigma_max = constant_model_max_parms[1];
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_bar = data->y_bar;
+    f64 y_sq_bar = data->y_sq_bar;
+
+    f64 Q = v0 * v0 - 2.0 * v0 * y_bar + y_sq_bar;
+
+    BayLaSquareMatrix hess = bayla_square_matrix_create(2, alloc);
+
+    f64 prior = -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min));
+    f64 likelihood = -N * (log(sigma) + 0.5 * log(2.0 * ELK_PI));
+    likelihood -= N * (y_sq_bar - 2.0 * y_bar * v0 + v0 * v0) / (2.0 * sigma * sigma);
+    f64 p = exp(prior + likelihood);
+    f64 sigma2 = sigma * sigma;
+    f64 sigma4 = sigma2 * sigma2;
+
+    hess.data[MATRIX_IDX(0, 0, 2)] = -N / sigma2 * p;
+    hess.data[MATRIX_IDX(1, 1, 2)] = ((N + 1.0) / sigma2 - 3.0 * N * Q / sigma4) * p;
+
+    Assert(hess.data[MATRIX_IDX(0, 0, 2)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 2)] < 0.0 );
+
+    return hess;
 }
 
 UserData constant_user_data = {0};
@@ -137,43 +239,133 @@ BayLaModel constant_model =
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 2,
-        .prior = constant_parameters_log_prior,
-        .likelihood = constant_parameters_log_likelihood,
-        .min_parameter_vals = constant_min_parms,
-        .max_parameter_vals = constant_max_parms,
+        .prior = constant_model_log_prior,
+        .likelihood = constant_model_log_likelihood,
+        .posterior_max = constant_model_max_a_posteriori,
+        .hessian_matrix = constant_model_2d_hessian,
         .user_data = &constant_user_data
     };
 
 /*---------------------------------------------------  Linear Model  -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a linear coefficent, parameter 2 is a standard deviation. */
-f64 linear_min_parms[3] = {-2.0, 0.0, 0.0};
-f64 linear_max_parms[3] = { 0.0, 4.0, 20.0};
+f64 linear_model_min_parms[3] = {-2.0, 0.0, log_model_min_sigma };
+f64 linear_model_max_parms[3] = { 0.0, 4.0, log_model_max_sigma };
 
-static f64 linear_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
+static f64 
+linear_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 4.0)) - parms[2] - bayla_log1mexp(linear_max_parms[2]);
+    f64 v0 = parms[0];
+    f64 v0_min = linear_model_min_parms[0];
+    f64 v0_max = linear_model_max_parms[0];
+
+    f64 b = parms[1];
+    f64 b_min = linear_model_min_parms[1];
+    f64 b_max = linear_model_max_parms[1];
+
+    f64 sigma = parms[2];
+    f64 sigma_min = linear_model_min_parms[2];
+    f64 sigma_max = linear_model_max_parms[2];
+
+    if(sigma < sigma_min || sigma > sigma_max || v0 < v0_min || v0 > v0_max || b < b_min || b > b_max)
+    {
+        return -INFINITY;
+    }
+
+    return -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min) * (b_max - b_min));
 }
 
-static f64 linear_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
+static f64 
+linear_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
-    UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 c = parms[0];
+    f64 v0 = parms[0];
     f64 b = parms[1];
     f64 sigma = parms[2];
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_bar = data->y_bar;
     f64 y_sq_bar = data->y_sq_bar;
     f64 x_sq_bar = data->x_sq_bar;
-    f64 y_bar = data->y_bar;
     f64 x_bar = data->x_bar;
     f64 xy_bar = data->xy_bar;
 
     data->ncalls++;
-
-    f64 log_prob = -N * (log(sigma) + 0.5 * log(2.0 * ELK_PI));
-    log_prob -= N * (y_sq_bar + 2.0 * (c * b * x_bar - b * xy_bar - c * y_bar) + b * b * x_sq_bar + c * c) / (2.0 * sigma * sigma);
+    
+    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+    f64 log_prob = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
 
     return log_prob;
+}
+
+static void
+linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *params_out)
+{
+    Assert(num_parms == 3);
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_bar = data->y_bar;
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+    f64 x_bar = data->x_bar;
+    f64 xy_bar = data->xy_bar;
+
+    f64 v0 = params_out[0] = y_bar - (xy_bar - y_bar * x_bar) / (x_sq_bar - x_bar * x_bar) * x_bar;
+    f64 b = params_out[1] = (xy_bar - y_bar * x_bar) / (x_sq_bar - x_bar * x_bar);
+
+    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+    params_out[2] = sqrt(N / (N + 1.0) * Q);
+}
+
+static BayLaSquareMatrix
+linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_posteriori_parms, MagAllocator *alloc)
+{
+    Assert(num_parms == 3);
+
+    f64 v0 = max_a_posteriori_parms[0];
+    f64 v0_min = linear_model_min_parms[0];
+    f64 v0_max = linear_model_max_parms[0];
+
+    f64 b = max_a_posteriori_parms[1];
+    f64 b_min = linear_model_min_parms[1];
+    f64 b_max = linear_model_max_parms[1];
+
+    f64 sigma = max_a_posteriori_parms[2];
+    f64 sigma_min = linear_model_min_parms[2];
+    f64 sigma_max = linear_model_max_parms[2];
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_bar = data->y_bar;
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+    f64 x_bar = data->x_bar;
+    f64 xy_bar = data->xy_bar;
+
+    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+
+    BayLaSquareMatrix hess = bayla_square_matrix_create(2, alloc);
+
+    f64 prior = -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min) * (b_max - b_min));
+    f64 likelihood = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
+    f64 p = exp(prior + likelihood);
+    f64 sigma2 = sigma * sigma;
+    f64 sigma4 = sigma2 * sigma2;
+
+
+    hess.data[MATRIX_IDX(2, 0, 3)] = 0;
+    hess.data[MATRIX_IDX(2, 1, 3)] = p * (2.0 * N / sigma2 * (x_bar * y_bar - xy_bar));
+    hess.data[MATRIX_IDX(2, 2, 3)] = p * ((N +  1.0) / sigma2 - 3.0 * N * Q / sigma4);
+
+    hess.data[MATRIX_IDX(1, 0, 3)] = -p *(N * x_bar / sigma2);
+    hess.data[MATRIX_IDX(1, 1, 3)] = -p *(N *x_sq_bar / sigma2);
+    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)];
+
+    hess.data[MATRIX_IDX(0, 0, 3)] = -p * (N / sigma2);
+    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)];
+    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)];
+
+    return hess;
 }
 
 UserData linear_user_data = {0};
@@ -182,13 +374,147 @@ BayLaModel linear_model =
     {
         .model_prior_probability = 1.0 / 7.0,
         .n_parameters = 3,
-        .prior = linear_parameters_log_prior,
-        .likelihood = linear_parameters_log_likelihood,
-        .min_parameter_vals = linear_min_parms,
-        .max_parameter_vals = linear_max_parms,
+        .prior = linear_model_log_prior,
+        .likelihood = linear_model_log_likelihood,
+        .posterior_max = linear_model_max_a_posteriori,
+        .hessian_matrix = linear_model_2d_hessian,
         .user_data = &linear_user_data
     };
 
+/*------------------------------------------------  Initialize UserData  -------------------------------------------------*/
+static inline void
+initialize_global_data(void)
+{
+    BayLaNormalDistribution normal = bayla_normal_distribution_create(0.0, 0.25);
+    ElkRandomState ran = elk_random_state_create(13);
+
+    f64 sum_y_sq = 0.0;
+    f64 sum_x_sq = 0.0;
+    f64 sum_x4 = 0.0;
+    f64 sum_x6 = 0.0;
+    f64 sum_x8 = 0.0;
+    f64 sum_x10 = 0.0;
+
+    f64 sum_y = 0.0;
+    f64 sum_x = 0.0;
+
+    f64 sum_xy = 0.0;
+    f64 sum_x3 = 0.0;
+    f64 sum_x5 = 0.0;
+    f64 sum_x7 = 0.0;
+    f64 sum_x9 = 0.0;
+    f64 sum_y_x2 = 0.0;
+    f64 sum_y_x3 = 0.0;
+    f64 sum_y_x4 = 0.0;
+    f64 sum_y_x5 = 0.0;
+
+    f64 sum_y_logx = 0.0;
+    f64 sum_logx_sq = 0.0;
+
+    /* Initialize the global data, with some noise! */
+    for(size i = 0; i < NUM_DATA_POINTS; ++i)
+    {
+        // approximate log(x) from x = 0.1 to 3.0 */
+        global_xs[i] = 0.1 + 2.9 * i / (NUM_DATA_POINTS - 1);
+        global_ys[i] = natural_log_approximation_by_3rd_order_polynomial(global_xs[i], 0.9);
+        f64 error = bayla_normal_distribution_random_deviate(&normal, &ran);
+        global_ys[i] += error;
+
+        sum_y_sq += global_ys[i] * global_ys[i];
+        sum_x_sq += global_xs[i] * global_xs[i];
+        sum_x4 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+        sum_x6 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+        sum_x8 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+        sum_x10 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+
+        sum_y += global_ys[i];
+        sum_x += global_xs[i];
+
+        sum_xy += global_xs[i] * global_ys[i];
+        sum_x3 += global_xs[i] * global_xs[i] * global_xs[i];
+        sum_x5 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+        sum_x7 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+        sum_x9 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
+        sum_y_x2 += global_xs[i] * global_xs[i] * global_ys[i];
+        sum_y_x3 += global_xs[i] * global_xs[i] * global_xs[i] * global_ys[i];
+        sum_y_x4 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_ys[i];
+        sum_y_x5 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_ys[i];
+
+        f64 logx = log(global_xs[i]);
+        sum_y_logx += global_ys[i] * logx;
+        sum_logx_sq += logx * logx;
+    }
+
+    size N = NUM_DATA_POINTS;
+    f64 y_sq_bar = sum_y_sq / NUM_DATA_POINTS;
+    f64 x_sq_bar = sum_x_sq / NUM_DATA_POINTS;
+    f64 x4_bar = sum_x4 / NUM_DATA_POINTS;
+    f64 x6_bar = sum_x6 / NUM_DATA_POINTS;
+    f64 x8_bar = sum_x8 / NUM_DATA_POINTS;
+    f64 x10_bar = sum_x10 / NUM_DATA_POINTS;
+
+    f64 y_bar = sum_y / NUM_DATA_POINTS;
+    f64 x_bar = sum_x / NUM_DATA_POINTS;
+
+    f64 xy_bar = sum_xy / NUM_DATA_POINTS;
+    f64 x3_bar = sum_x3 / NUM_DATA_POINTS;
+    f64 x5_bar = sum_x5 / NUM_DATA_POINTS;
+    f64 x7_bar = sum_x7 / NUM_DATA_POINTS;
+    f64 x9_bar = sum_x9 / NUM_DATA_POINTS;
+    f64 y_x2_bar = sum_y_x2 / NUM_DATA_POINTS;
+    f64 y_x3_bar = sum_y_x3 / NUM_DATA_POINTS;
+    f64 y_x4_bar = sum_y_x4 / NUM_DATA_POINTS;
+    f64 y_x5_bar = sum_y_x5 / NUM_DATA_POINTS;
+
+    f64 y_logx_bar = sum_y_logx / NUM_DATA_POINTS;
+    f64 logx_sq_bar = sum_logx_sq / NUM_DATA_POINTS;
+
+    UserData const default_ud = 
+        {
+            .ncalls = 0,
+            .xs = global_xs,
+            .ys = global_ys,
+
+            .N = N,
+
+            .y_sq_bar = y_sq_bar,
+            .x_sq_bar = x_sq_bar,
+            .x4_bar = x4_bar,
+            .x6_bar = x6_bar,
+            .x8_bar = x8_bar,
+            .x10_bar = x10_bar,
+
+            .y_bar = y_bar,
+            .x_bar = x_bar,
+
+            .xy_bar = xy_bar,
+            .x3_bar = x3_bar,
+            .x5_bar = x5_bar,
+            .x7_bar = x7_bar,
+            .x9_bar = x9_bar,
+            .y_x2_bar = y_x2_bar,
+            .y_x3_bar = y_x3_bar,
+            .y_x4_bar = y_x4_bar,
+            .y_x5_bar = y_x5_bar,
+
+            .y_logx_bar = y_logx_bar,
+            .logx_sq_bar = logx_sq_bar
+        };
+
+    log_user_data = default_ud;
+    constant_user_data = default_ud;
+    linear_user_data = default_ud;
+#if 0
+    second_order_user_data = default_ud;
+    third_order_user_data = default_ud;
+    fourth_order_user_data = default_ud;
+    fifth_order_user_data = default_ud;
+#endif
+}
+
+#undef NUM_DATA_POINTS
+
+#if 0
 /*-----------------------------------------------  2nd Order Polynomial  -------------------------------------------------*/
 /* param 0 is a constant, param 1 is a linear coeff, param 2 is a quadratic coeff,  param 3 is a standard deviation. */
 f64 second_order_min_parms[4] = {-2.0, -4.0, -2.0, 0.0};
@@ -451,748 +777,104 @@ BayLaModel fifth_order_model =
         .max_parameter_vals = fifth_order_max_parms,
         .user_data = &fifth_order_user_data
     };
-
-/*------------------------------------------------  Initialize UserData  -------------------------------------------------*/
-static inline void
-initialize_global_data(void)
-{
-    BayLaNormalDistribution normal = bayla_normal_distribution_create(0.0, 0.25);
-    ElkRandomState ran = elk_random_state_create(12);
-
-    f64 sum_y_sq = 0.0;
-    f64 sum_x_sq = 0.0;
-    f64 sum_x4 = 0.0;
-    f64 sum_x6 = 0.0;
-    f64 sum_x8 = 0.0;
-    f64 sum_x10 = 0.0;
-
-    f64 sum_y = 0.0;
-    f64 sum_x = 0.0;
-
-    f64 sum_xy = 0.0;
-    f64 sum_x3 = 0.0;
-    f64 sum_x5 = 0.0;
-    f64 sum_x7 = 0.0;
-    f64 sum_x9 = 0.0;
-    f64 sum_y_x2 = 0.0;
-    f64 sum_y_x3 = 0.0;
-    f64 sum_y_x4 = 0.0;
-    f64 sum_y_x5 = 0.0;
-
-    f64 sum_y_logx = 0.0;
-    f64 sum_logx_sq = 0.0;
-
-    /* Initialize the global data, with some noise! */
-    for(size i = 0; i < NUM_DATA_POINTS; ++i)
-    {
-        // approximate log(x) from x = 0.1 to 3.0 */
-        global_xs[i] = 0.1 + 2.9 * i / (NUM_DATA_POINTS - 1);
-        global_ys[i] = natural_log_approximation_by_3rd_order_polynomial(global_xs[i], 0.9);
-        f64 error = bayla_normal_distribution_random_deviate(&normal, &ran);
-        global_ys[i] += error;
-
-        sum_y_sq += global_ys[i] * global_ys[i];
-        sum_x_sq += global_xs[i] * global_xs[i];
-        sum_x4 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-        sum_x6 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-        sum_x8 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-        sum_x10 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-
-        sum_y += global_ys[i];
-        sum_x += global_xs[i];
-
-        sum_xy += global_xs[i] * global_ys[i];
-        sum_x3 += global_xs[i] * global_xs[i] * global_xs[i];
-        sum_x5 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-        sum_x7 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-        sum_x9 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i];
-        sum_y_x2 += global_xs[i] * global_xs[i] * global_ys[i];
-        sum_y_x3 += global_xs[i] * global_xs[i] * global_xs[i] * global_ys[i];
-        sum_y_x4 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_ys[i];
-        sum_y_x5 += global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_xs[i] * global_ys[i];
-
-        f64 logx = log(global_xs[i]);
-        sum_y_logx += global_ys[i] * logx;
-        sum_logx_sq += logx * logx;
-    }
-
-    size N = NUM_DATA_POINTS;
-    f64 y_sq_bar = sum_y_sq / NUM_DATA_POINTS;
-    f64 x_sq_bar = sum_x_sq / NUM_DATA_POINTS;
-    f64 x4_bar = sum_x4 / NUM_DATA_POINTS;
-    f64 x6_bar = sum_x6 / NUM_DATA_POINTS;
-    f64 x8_bar = sum_x8 / NUM_DATA_POINTS;
-    f64 x10_bar = sum_x10 / NUM_DATA_POINTS;
-
-    f64 y_bar = sum_y / NUM_DATA_POINTS;
-    f64 x_bar = sum_x / NUM_DATA_POINTS;
-
-    f64 xy_bar = sum_xy / NUM_DATA_POINTS;
-    f64 x3_bar = sum_x3 / NUM_DATA_POINTS;
-    f64 x5_bar = sum_x5 / NUM_DATA_POINTS;
-    f64 x7_bar = sum_x7 / NUM_DATA_POINTS;
-    f64 x9_bar = sum_x9 / NUM_DATA_POINTS;
-    f64 y_x2_bar = sum_y_x2 / NUM_DATA_POINTS;
-    f64 y_x3_bar = sum_y_x3 / NUM_DATA_POINTS;
-    f64 y_x4_bar = sum_y_x4 / NUM_DATA_POINTS;
-    f64 y_x5_bar = sum_y_x5 / NUM_DATA_POINTS;
-
-    f64 y_logx_bar = sum_y_logx / NUM_DATA_POINTS;
-    f64 logx_sq_bar = sum_logx_sq / NUM_DATA_POINTS;
-
-    UserData const default_ud = 
-        {
-            .ncalls = 0,
-            .xs = global_xs,
-            .ys = global_ys,
-
-            .N = N,
-
-            .y_sq_bar = y_sq_bar,
-            .x_sq_bar = x_sq_bar,
-            .x4_bar = x4_bar,
-            .x6_bar = x6_bar,
-            .x8_bar = x8_bar,
-            .x10_bar = x10_bar,
-
-            .y_bar = y_bar,
-            .x_bar = x_bar,
-
-            .xy_bar = xy_bar,
-            .x3_bar = x3_bar,
-            .x5_bar = x5_bar,
-            .x7_bar = x7_bar,
-            .x9_bar = x9_bar,
-            .y_x2_bar = y_x2_bar,
-            .y_x3_bar = y_x3_bar,
-            .y_x4_bar = y_x4_bar,
-            .y_x5_bar = y_x5_bar,
-
-            .y_logx_bar = y_logx_bar,
-            .logx_sq_bar = logx_sq_bar
-        };
-
-    constant_user_data = default_ud;
-    linear_user_data = default_ud;
-    second_order_user_data = default_ud;
-    third_order_user_data = default_ud;
-    fourth_order_user_data = default_ud;
-    fifth_order_user_data = default_ud;
-    log_user_data = default_ud;
-}
-
-#undef NUM_DATA_POINTS
+#endif
 
 /*---------------------------------------------------  Test Models   -----------------------------------------------------*/
-
-static BayLaIntegratorOptions global_opts[] =
-    {
-        {
-            .strategy = BAYLA_INTEGRATE_MONTE_CARLO,
-            .simple_monte_carlo.min_samples = 50000,
-            .simple_monte_carlo.max_samples = 30000000,
-            .simple_monte_carlo.samples_per_batch = 1000,
-            .simple_monte_carlo.acceptable_abs_error = -1.0e-10,
-            .simple_monte_carlo.acceptable_prop_error = -0.05,
-            .simple_monte_carlo.seed = 43
-        },
-
-        {
-            .strategy = BAYLA_INTEGRATE_MISER,
-            .miser.min_points = 30,
-            .miser.min_to_subdivide = 120,
-            .miser.total_samples = 30000000,
-            .miser.explore_factor = 0.1,
-            .miser.acceptable_abs_error = -1.0e-100,
-            .miser.acceptable_prop_error = -0.05,
-            .miser.seed = 44
-        },
-
-        {
-            .strategy = BAYLA_INTEGRATE_VEGAS,
-            .vegas.min_total_samples = 50000,
-            .vegas.max_total_samples = 30000000,
-            .vegas.samples_per_refinement = 2000000,
-            .vegas.acceptable_abs_error = -1.0e-10,
-            .vegas.acceptable_prop_error = -0.05,
-            .vegas.num_grid_cells = 1000,
-            .vegas.alpha = 0.75,
-            .vegas.seed = 45
-        },
-
-        {
-            .strategy = BAYLA_INTEGRATE_VEGAS_MISER,
-            .vegas_miser.min_total_samples = 50000,
-            .vegas_miser.max_total_samples = 30000000,
-            .vegas_miser.samples_per_refinement = 200000,
-            .vegas_miser.min_points = 30,
-            .vegas_miser.min_to_subdivide = 120,
-            .vegas_miser.explore_factor = 0.1,
-            .vegas_miser.acceptable_abs_error = -1.0e-10,
-            .vegas_miser.acceptable_prop_error = -0.05,
-            .vegas_miser.num_grid_cells = 1000,
-            .vegas_miser.alpha = 0.75,
-            .vegas_miser.seed = 46
-        },
-
-        {
-            .strategy = BAYLA_INTEGRATE_VEGAS_PLUS,
-            .vegas_plus.min_total_samples = 50000,
-            .vegas_plus.max_total_samples = 30000000,
-            .vegas_plus.samples_per_refinement = 2000000,
-            .vegas_plus.acceptable_abs_error = -1.0e-10,
-            .vegas_plus.acceptable_prop_error = -0.05,
-            .vegas_plus.num_grid_cells = 1000,
-            .vegas_plus.alpha = 0.75,
-            .vegas_plus.beta = 0.75,
-            .vegas_plus.seed = 47
-        }
-    };
-
-typedef struct
+static inline void
+test_log_model(MagAllocator alloc_, MagAllocator scratch)
 {
-    BayLaModel *model;
-    BayLaIntegratorOptions opts;
-    MagStaticArena scratch;
-    BayLaEvidenceResult *evidence;
-} EvidenceCalcThreadData;
+    CoyProfileAnchor ap = {0};
+    char *model_name = "Log";
 
-void
-evidence_thread_func(void *data)
-{
-    EvidenceCalcThreadData *td = data;
-    *td->evidence = bayla_calculate_evidence(td->model, &td->opts, td->scratch);
+    MagAllocator *alloc = &alloc_;
+
+    ap = COY_START_PROFILE_BLOCK("  Log Model - sample");
+    BayLaSamples samples = bayla_importance_sample_optimize(&log_model, 1000, 13, alloc, scratch);
+    BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    COY_END_PROFILE(ap);
+    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "log_model.csv");
 }
 
 static inline void
-test_evidence_for_polynomial_degree(BayLaIntegratorOptions *opts)
+test_constant_model(MagAllocator alloc_, MagAllocator scratch)
 {
+    CoyProfileAnchor ap = {0};
+    char *model_name = "Constant";
 
-    BayLaModel *models[] = 
-        {
-            &log_model, &constant_model, &linear_model,
-            &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
-        };
+    MagAllocator *alloc = &alloc_;
 
-#define NUM_MODELS  ECO_ARRAY_SIZE(models)
+    ap = COY_START_PROFILE_BLOCK("  Constant Model - sample");
+    BayLaSamples samples = bayla_importance_sample_optimize(&constant_model, 100000, 13, alloc, scratch);
+    BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    COY_END_PROFILE(ap);
+    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
-    BayLaEvidenceResult evidence[NUM_MODELS] = {0};
-
-    initialize_global_data();
-
-    EvidenceCalcThreadData tds[NUM_MODELS] = {0};
-    CoyThread threads[NUM_MODELS] = {0};
-    MagStaticArena scratches[NUM_MODELS] = {0};
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        scratches[m] = mag_static_arena_allocate_and_create(ECO_MiB(32));
-    }
-
-    b32 success = true;
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        tds[m].model = models[m];
-        tds[m].opts = *opts;
-        tds[m].scratch = scratches[m];
-        tds[m].evidence = &evidence[m];
-
-        success &= coy_thread_create(&threads[m], evidence_thread_func, &tds[m]);
-        Assert(success);
-    }
-
-    f64 max_evidence = -INFINITY;
-    size max_evidence_index = -1;
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        success &= coy_thread_join(&threads[m]);
-        Assert(success);
-        coy_thread_destroy(&threads[m]);
-
-        if(evidence[m].result.value.val > max_evidence)
-        {
-            max_evidence = evidence[m].result.value.val;
-            max_evidence_index = m;
-        }
-    }
-
-    size total_calls = 0;
-    printf("\n%42s - %13s %10s %12s\n", "Evidence", "Total Samples", "N Used", "N-Calls");
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        printf("%s%s %9s : %8.1e (%8.1e, %5.1lf%%) - %13td",
-                m == max_evidence_index ? "*": " ",
-                evidence[m].converged ? " ": "-",
-                model_names[m],
-                bayla_log_value_map_out_of_log_domain(evidence[m].result.value),
-                bayla_log_value_map_out_of_log_domain(evidence[m].result.error),
-                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(evidence[m].result.error, evidence[m].result.value)),
-                evidence[m].total_samples);
-        
-        switch(evidence[m].strategy)
-        {
-        case BAYLA_INTEGRATE_VEGAS:
-        case BAYLA_INTEGRATE_VEGAS_PLUS:
-        case BAYLA_INTEGRATE_VEGAS_MISER:
-        case BAYLA_INTEGRATE_MISER:
-            {
-                printf(" %10td", evidence[m].samples_used);
-            } break;
-
-        case BAYLA_INTEGRATE_MONTE_CARLO:
-            {
-                printf("%10s", " ");
-            } break;
-
-        default: Panic();
-        }
-
-        UserData *ud = models[m]->user_data;
-        printf(" %12td\n", ud->ncalls);
-        total_calls += ud->ncalls;
-    }
-    printf("Total calls: %.0lf million\n\n\n", total_calls / 1000000.0);
-
-    for(size m = 0; m < NUM_MODELS; ++m) { mag_static_arena_destroy(&scratches[m]); }
-
-#undef NUM_MODELS
-
-}
-
-/*----------------------------------------------------- Consistency -------------------------------------------------------*/
-
-#define NUM_TRIALS 100
-
-static inline void
-test_evidence_for_polynomial_degree_consistency(BayLaIntegratorOptions *opts)
-{
-
-    BayLaModel *models[] = 
-        {
-            &log_model, &constant_model, &linear_model,
-            &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
-        };
-
-#define NUM_MODELS ECO_ARRAY_SIZE(models)
-
-    char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
-    BayLaEvidenceResult evidence[NUM_MODELS][NUM_TRIALS] = {0};
-
-    MagStaticArena scratches[NUM_TRIALS] = {0};
-    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-    {
-        scratches[cnt] = mag_static_arena_allocate_and_create(ECO_MiB(32));
-    }
-
-    initialize_global_data();
-
-    printf("%10s %13s ± %13s [%13s <-> %13s] %7s %10s\n",
-            "Model Name", "Mean", "Std", "Min Err", "Max Err", "Pct Err", "Percentile");
-
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-
-        EvidenceCalcThreadData tds[NUM_TRIALS] = {0};
-        CoyThread threads[NUM_TRIALS] = {0};
-
-        b32 success = true;
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-
-            tds[cnt].model = models[m];
-            tds[cnt].opts = *opts;
-
-            u64 delta = cnt * ECO_ARRAY_SIZE(models);
-            switch(tds[cnt].opts.strategy)
-            {
-                case BAYLA_INTEGRATE_VEGAS:       tds[cnt].opts.vegas.seed += delta;              break;
-                case BAYLA_INTEGRATE_VEGAS_PLUS:  tds[cnt].opts.vegas_plus.seed += delta;         break;
-                case BAYLA_INTEGRATE_VEGAS_MISER: tds[cnt].opts.vegas_miser.seed += delta;        break;
-                case BAYLA_INTEGRATE_MISER:       tds[cnt].opts.miser.seed += delta;              break;
-                case BAYLA_INTEGRATE_MONTE_CARLO: tds[cnt].opts.simple_monte_carlo.seed += delta; break;
-                default: Panic();                                                                 break;
-            }
-
-            tds[cnt].evidence = &evidence[m][cnt];
-            tds[cnt].scratch = scratches[cnt];
-
-            success &= coy_thread_create(&threads[cnt], evidence_thread_func, &tds[cnt]);
-            Assert(success);
-        }
-
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-            success &= coy_thread_join(&threads[cnt]);
-            coy_thread_destroy(&threads[cnt]);
-        }
-        Assert(success);
-
-        f64 min_err = INFINITY;
-        f64 max_err = -INFINITY;
-        f64 sum = 0.0;
-        f64 errors[NUM_TRIALS] = {0};
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-            f64 err = bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.error);
-            min_err = min_err < err ? min_err : err;
-            max_err = max_err > err ? max_err : err;
-            errors[cnt] = err;
-
-            sum += bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.value);
-        }
-        f64 mean = sum / NUM_TRIALS;
-
-        f64 sum_diff_sq = 0.0;
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-            f64 value = bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.value);
-            sum_diff_sq += (value - mean) * (value - mean); 
-        }
-        f64 std = sqrt(sum_diff_sq / (NUM_TRIALS - 1));
-
-        f64 pct = percentile(NUM_TRIALS, errors, std, scratches[0]);
-        f64 pct_error = std/mean * 100.0;
-
-        printf("%10s %13.6e ± %13.6e [%13.6e <-> %13.6e] %6.2lf%% %9.1lf%%\n",
-                model_names[m], mean, std, min_err, max_err, pct_error, pct);
-    }
-
-    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt) { mag_static_arena_destroy(&scratches[cnt]); }
-
-#undef NUM_MODELS
+    bayla_samples_save_csv(&samples, ci_thresh, "constant_model.csv");
 }
 
 static inline void
-test_evidence_for_polynomial_degree_consistency_with_preconditioning(BayLaIntegratorOptions *opts)
+test_linear_model(MagAllocator alloc_, MagAllocator scratch)
 {
+    CoyProfileAnchor ap = {0};
+    char *model_name = "Linear";
 
-    BayLaModel *models[] = 
-        {
-            &log_model, &constant_model, &linear_model,
-            &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
-        };
+    MagAllocator *alloc = &alloc_;
 
-#define NUM_MODELS ECO_ARRAY_SIZE(models)
+    ap = COY_START_PROFILE_BLOCK("  Linear Model - sample");
+    BayLaSamples samples = bayla_importance_sample_optimize(&linear_model, 100000, 13, alloc, scratch);
+    BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
+    COY_END_PROFILE(ap);
+    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
-    BayLaEvidenceResult evidence[NUM_MODELS][NUM_TRIALS] = {0};
-
-    MagStaticArena perm = mag_static_arena_allocate_and_create(ECO_MiB(32));
-    MagStaticArena scratches[NUM_TRIALS] = {0};
-    MagStaticArena perms[NUM_TRIALS] = {0};
-    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-    {
-        scratches[cnt] = mag_static_arena_allocate_and_create(ECO_MiB(32));
-        perms[cnt] = mag_static_arena_allocate_and_create(ECO_MiB(32));
-    }
-
-    ElkRandomState ran = elk_random_state_create(11);
-    initialize_global_data();
-
-    f64 starting_values[NUM_MODELS] = {0};
-
-    printf("%10s %13s ± %13s [%13s <-> %13s] %7s %10s\n",
-            "Model Name", "Mean", "Std", "Min Err", "Max Err", "Pct Err", "Percentile");
-
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        BayLaModel *model = models[m];
-
-        f64 *min_vals = model->min_parameter_vals;
-        f64 *max_vals = model->max_parameter_vals;
-        for(size n = 0; n < model->n_parameters; ++n)
-        {
-            starting_values[n] = (min_vals[n] + max_vals[n]) / 2.0;
-        }
-
-        BayLaPreconditioningSamplerArgs args = bayla_preconditioning_sampler_args_allocate_and_create(
-                model,
-                1000,
-                10000,
-                starting_values,
-                &perm);
-
-        bayla_preconditioning_sample(&args, &ran, scratches[0]);
-
-        BayLaParametersSamples *samples = args.output;
-        bayla_vegas_map_precondition(model, opts, samples, &perm);
-
-        EvidenceCalcThreadData tds[NUM_TRIALS] = {0};
-        CoyThread threads[NUM_TRIALS] = {0};
-
-        b32 success = true;
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-
-            tds[cnt].model = models[m];
-            tds[cnt].opts = *opts;
-
-            u64 delta = cnt * ECO_ARRAY_SIZE(models);
-            switch(tds[cnt].opts.strategy)
-            {
-                case BAYLA_INTEGRATE_VEGAS:
-                    tds[cnt].opts.vegas.seed += delta;
-                    tds[cnt].opts.vegas.map = bayla_vegas_map_deep_copy(opts->vegas.map, &perms[cnt]);
-                    break;
-                case BAYLA_INTEGRATE_VEGAS_PLUS:
-                    tds[cnt].opts.vegas_plus.seed += delta;
-                    tds[cnt].opts.vegas_plus.map = bayla_vegas_map_deep_copy(opts->vegas_plus.map, &perms[cnt]);
-                    break;
-                case BAYLA_INTEGRATE_VEGAS_MISER:
-                    tds[cnt].opts.vegas_miser.seed += delta;
-                    tds[cnt].opts.vegas_miser.map = bayla_vegas_map_deep_copy(opts->vegas_miser.map, &perms[cnt]);
-                    break;
-                default:
-                    Panic();
-                    break;
-            }
-
-            tds[cnt].evidence = &evidence[m][cnt];
-            tds[cnt].scratch = scratches[cnt];
-
-            success &= coy_thread_create(&threads[cnt], evidence_thread_func, &tds[cnt]);
-            Assert(success);
-        }
-
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-            success &= coy_thread_join(&threads[cnt]);
-            coy_thread_destroy(&threads[cnt]);
-        }
-        Assert(success);
-
-        f64 min_err = INFINITY;
-        f64 max_err = -INFINITY;
-        f64 sum = 0.0;
-        f64 errors[NUM_TRIALS] = {0};
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-            f64 err = bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.error);
-            min_err = min_err < err ? min_err : err;
-            max_err = max_err > err ? max_err : err;
-            errors[cnt] = err;
-
-            sum += bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.value);
-        }
-        f64 mean = sum / NUM_TRIALS;
-
-        f64 sum_diff_sq = 0.0;
-        for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-        {
-            f64 value = bayla_log_value_map_out_of_log_domain(evidence[m][cnt].result.value);
-            sum_diff_sq += (value - mean) * (value - mean); 
-        }
-        f64 std = sqrt(sum_diff_sq / (NUM_TRIALS - 1));
-
-        f64 pct = percentile(NUM_TRIALS, errors, std, scratches[0]);
-        f64 pct_error = std/mean * 100.0;
-
-        printf("%10s %13.6e ± %13.6e [%13.6e <-> %13.6e] %6.2lf%% %9.1lf%%\n",
-                model_names[m], mean, std, min_err, max_err, pct_error, pct);
-    }
-
-    for(size cnt = 0; cnt < NUM_TRIALS; ++cnt)
-    {
-        mag_static_arena_destroy(&perms[cnt]);
-        mag_static_arena_destroy(&scratches[cnt]);
-    }
-
-#undef NUM_MODELS
-}
-
-#undef NUM_TRIALS
-
-/*-------------------------------------------  Preconditioning Sampling  --------------------------------------------------*/
-
-static inline void
-test_sampling_preconditioning(BayLaIntegratorOptions *opts)
-{
-
-    BayLaModel *models[] = 
-        {
-            &log_model, &constant_model, &linear_model,
-            &second_order_model, &third_order_model, &fourth_order_model, &fifth_order_model,
-        };
-
-#define NUM_MODELS ECO_ARRAY_SIZE(models)
-
-    char *model_names[NUM_MODELS] = {"log", "constant", "linear", "2nd order", "3rd order", "4th order", "5th order",};
-    BayLaEvidenceResult evidence[NUM_MODELS] = {0};
-
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ECO_MiB(32));
-    MagStaticArena perm_ = mag_static_arena_allocate_and_create(ECO_MiB(32));
-    MagStaticArena *perm = &perm_;
-
-    ElkRandomState ran = elk_random_state_create(11);
-    initialize_global_data();
-
-    f64 starting_values[7] = {0};
-
-    f64 max_evidence = -INFINITY;
-    size max_evidence_index = -1;
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        BayLaModel *model = models[m];
-
-        f64 *min_vals = model->min_parameter_vals;
-        f64 *max_vals = model->max_parameter_vals;
-        Assert(model->n_parameters <= ECO_ARRAY_SIZE(starting_values));
-        for(size n = 0; n < model->n_parameters; ++n)
-        {
-            starting_values[n] = (min_vals[n] + max_vals[n]) / 2.0;
-        }
-
-        CoyProfileAnchor ap = COY_START_PROFILE_BLOCK("Precondition Sampling.");
-        BayLaPreconditioningSamplerArgs args = bayla_preconditioning_sampler_args_allocate_and_create(
-                model,
-                1000,
-                10000,
-                starting_values,
-                perm);
-
-        bayla_preconditioning_sample(&args, &ran, scratch);
-        COY_END_PROFILE(ap);
-
-        ap = COY_START_PROFILE_BLOCK("Preconditioning.");
-        BayLaParametersSamples *samples = args.output;
-        bayla_vegas_map_precondition(model, opts, samples, perm);
-        COY_END_PROFILE(ap);
-
-        evidence[m] = bayla_calculate_evidence(model, opts, scratch);
-        if(evidence[m].result.value.val > max_evidence)
-        {
-            max_evidence = evidence[m].result.value.val;
-            max_evidence_index = m;
-        }
-    }
-
-    size total_calls = 0;
-    printf("\n%42s - %13s %10s %12s\n", "Evidence", "Total Samples", "N Used", "N-Calls");
-    for(size m = 0; m < NUM_MODELS; ++m)
-    {
-        printf("%s%s %9s : %8.1e (%8.1e, %5.1lf%%) - %13td",
-                m == max_evidence_index ? "*": " ",
-                evidence[m].converged ? " ": "-",
-                model_names[m],
-                bayla_log_value_map_out_of_log_domain(evidence[m].result.value),
-                bayla_log_value_map_out_of_log_domain(evidence[m].result.error),
-                100.0 * bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(evidence[m].result.error, evidence[m].result.value)),
-                evidence[m].total_samples);
-
-        switch(evidence[m].strategy)
-        {
-        case BAYLA_INTEGRATE_VEGAS:
-        case BAYLA_INTEGRATE_VEGAS_PLUS:
-        case BAYLA_INTEGRATE_VEGAS_MISER:
-        case BAYLA_INTEGRATE_MISER:
-            {
-                printf(" %10td", evidence[m].samples_used);
-            } break;
-
-        case BAYLA_INTEGRATE_MONTE_CARLO:
-            {
-                printf("%10s", " ");
-            } break;
-
-        default: Panic();
-        }
-
-        UserData *ud = models[m]->user_data;
-        printf(" %12td\n", ud->ncalls);
-        total_calls += ud->ncalls;
-    }
-    printf("Total calls: %.0lf million\n", total_calls / 1000000.0);
-
-    mag_static_arena_destroy(&scratch);
-
-#undef NUM_MODELS
+    bayla_samples_save_csv(&samples, ci_thresh, "linear_model.csv");
 }
 
 /*---------------------------------------------------   All Tests    -----------------------------------------------------*/
 static inline void
 all_evidence_tests(void)
 {
+    printf("\n             Evidence Tests\n\n");
+
+    MagAllocator alloc = mag_allocator_dyn_arena_create(ECO_GiB(1));
+    MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_GiB(1));
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+
+    CoyProfileAnchor ap_all = COY_START_PROFILE_BLOCK("Evidence Tests");
     CoyProfileAnchor ap = {0};
 
-    printf("\nTesting Monte Carlo\n");
-    ap = COY_START_PROFILE_BLOCK("Monte Carlo");
-    test_evidence_for_polynomial_degree(&global_opts[0]);
+    ap = COY_START_PROFILE_BLOCK("Evidence Tests Init Data");
+    initialize_global_data();
     COY_END_PROFILE(ap);
 
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("Monte Carlo Consistency");
-    test_evidence_for_polynomial_degree_consistency(&global_opts[0]);
+    printf("%-10s %-4s %-9s %-6s %-15s %-33s\n",
+            "Model Name", "ndim", "n_samples", "neff", "effective ratio", "z_evidence");
+
+    ap = COY_START_PROFILE_BLOCK("Evidence Tests Log Model");
+    test_log_model(alloc, scratch);
     COY_END_PROFILE(ap);
 
-    printf("\nTesting MISER\n");
-    ap = COY_START_PROFILE_BLOCK("MISER");
-    test_evidence_for_polynomial_degree(&global_opts[1]);
+    ap = COY_START_PROFILE_BLOCK("Evidence Tests Const Model");
+    test_constant_model(alloc, scratch);
     COY_END_PROFILE(ap);
 
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("MISER Consistency");
-    test_evidence_for_polynomial_degree_consistency(&global_opts[1]);
+    ap = COY_START_PROFILE_BLOCK("Evidence Tests Linear Model");
+    test_linear_model(alloc, scratch);
     COY_END_PROFILE(ap);
 
-    printf("\nTesting VEGAS\n");
-    ap = COY_START_PROFILE_BLOCK("VEGAS");
-    test_evidence_for_polynomial_degree(&global_opts[2]);
-    COY_END_PROFILE(ap);
+    eco_arena_destroy(&scratch);
+    eco_arena_destroy(&alloc);
 
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("VEGAS Consistency");
-    test_evidence_for_polynomial_degree_consistency(&global_opts[2]);
-    COY_END_PROFILE(ap);
-
-    printf("\nTesting Sampling Preconditioned VEGAS\n");
-    ap = COY_START_PROFILE_BLOCK("Preconditioned VEGAS");
-    test_sampling_preconditioning(&global_opts[2]);
-    COY_END_PROFILE(ap);
-
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("Preconditioned VEGAS Consistency");
-    test_evidence_for_polynomial_degree_consistency_with_preconditioning(&global_opts[2]);
-    COY_END_PROFILE(ap);
-
-    printf("\nTesting VEGAS-MISER\n");
-    ap = COY_START_PROFILE_BLOCK("VEGAS-MISER");
-    test_evidence_for_polynomial_degree(&global_opts[3]);
-    COY_END_PROFILE(ap);
-
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("VEGAS-MISER Consistency");
-    test_evidence_for_polynomial_degree_consistency(&global_opts[3]);
-    COY_END_PROFILE(ap);
-
-    printf("\nTesting Sampling Preconditioned VEGAS-MISER\n");
-    ap = COY_START_PROFILE_BLOCK("Preconditioned VEGAS-MISER");
-    test_sampling_preconditioning(&global_opts[3]);
-    COY_END_PROFILE(ap);
-
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("Preconditioned VEGAS-MISER Consistency");
-    test_evidence_for_polynomial_degree_consistency_with_preconditioning(&global_opts[3]);
-    COY_END_PROFILE(ap);
-
-    printf("\nTesting VEGAS+\n");
-    ap = COY_START_PROFILE_BLOCK("VEGAS+");
-    test_evidence_for_polynomial_degree(&global_opts[4]);
-    COY_END_PROFILE(ap);
-
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("VEGAS+ Consistency");
-    test_evidence_for_polynomial_degree_consistency(&global_opts[4]);
-    COY_END_PROFILE(ap);
-
-    printf("\nTesting Sampling Preconditioned VEGAS+\n");
-    ap = COY_START_PROFILE_BLOCK("Preconditioned VEGAS+");
-    test_sampling_preconditioning(&global_opts[4]);
-    COY_END_PROFILE(ap);
-
-    printf("\n");
-    ap = COY_START_PROFILE_BLOCK("Preconditioned VEGAS+ Consistency");
-    test_evidence_for_polynomial_degree_consistency_with_preconditioning(&global_opts[4]);
-    COY_END_PROFILE(ap);
-
+    COY_END_PROFILE(ap_all);
 }
 

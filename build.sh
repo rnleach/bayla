@@ -26,7 +26,7 @@ then
 elif [ "$#" -gt 0 -a "$1" != "clean" -o \( "$#" = 0 \) ]
 then
     echo "release build"
-    CFLAGS="$CFLAGS -O3 -DNDEBUG"
+    CFLAGS="$CFLAGS -O3 -DNDEBUG -DCOY_PROFILE"
 fi
 
 if [ "$#" -gt 0 -a "$1" = "clean" ] 

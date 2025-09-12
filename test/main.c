@@ -13,6 +13,7 @@
 #include "log_math.c"
 #include "dist_tests.c"
 #include "sampler_test.c"
+#include "evidence_test.c"
 
 int
 main(int argc, char *argv[])
@@ -23,6 +24,7 @@ main(int argc, char *argv[])
     all_log_math_tests();
     all_distribution_math_tests();
     all_sampler_tests();
+    all_evidence_tests();
 
     printf("\n  ---------- Finished Tests ----------\n");
     coy_profile_end();
