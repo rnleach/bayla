@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 10
+#define NUM_DATA_POINTS 20
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -51,7 +51,7 @@ f64 global_ys[NUM_DATA_POINTS];
 
 /*-------------------------------------------------  Logarithmic Model  --------------------------------------------------*/
 static f64 const log_model_min_sigma = 1.0e-5;
-static f64 const log_model_max_sigma = 10.0;
+static f64 const log_model_max_sigma = 15.0;
 
 /* parameter 0 a standard deviation. */
 static f64
@@ -248,7 +248,7 @@ BayLaModel constant_model =
 
 /*---------------------------------------------------  Linear Model  -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a linear coefficent, parameter 2 is a standard deviation. */
-f64 linear_model_min_parms[3] = {-2.0, -2.0, log_model_min_sigma };
+f64 linear_model_min_parms[3] = {-2.0, -0.0, log_model_min_sigma };
 f64 linear_model_max_parms[3] = { 2.0,  4.0, log_model_max_sigma };
 
 static f64 
@@ -814,7 +814,7 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch)
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  Constant Model - sample");
-    BayLaSamples samples = bayla_importance_sample_optimize(&constant_model, 100000, 13, alloc, scratch);
+    BayLaSamples samples = bayla_importance_sample_optimize(&constant_model, 10000, 13, alloc, scratch);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch);
     COY_END_PROFILE(ap);

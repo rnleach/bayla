@@ -779,12 +779,27 @@ bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname
 {
     FILE *f = fopen(fname, "wb");
 
+    /* Sort them in order of increasing weight. */
     size const n_samples = samples->n_samples;
     size const ndim = samples->ndim;
     size const pidx = ndim + 0;
     size const qidx = ndim + 1;
     size const widx = ndim + 2;
-    size const ncols = ndim + 3;            /* The last 3 are Q, P, and W */
+    size const ncols = ndim + 3;
+
+    MagStaticArena scratch = mag_static_arena_allocate_and_create(ncols * n_samples * sizeof(f64));
+    f64 *row_scratch = eco_arena_nmalloc(&scratch, ncols * n_samples, f64);
+    Assert(row_scratch);
+
+    pak_radix_sort(
+            samples->rows,             /* The buffer to sort.                                      */
+            n_samples,                 /* The number of items in the buffer.                       */
+            widx * sizeof(f64),        /* Offset into the object for the item we're sorting by.    */
+            sizeof(f64) * ncols,       /* The stride, or how large a single row is.                */
+            row_scratch,               /* Scratch memory for doing the search.                     */
+            PAK_RADIX_SORT_F64,        /* Sorting f64s.                                            */
+            PAK_SORT_ASCENDING);       /* Sort in ascending order.                                 */
+
 
     for(size r = 0; r < n_samples; ++r)
     {
@@ -797,6 +812,8 @@ bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname
     }
 
     fclose(f);
+
+    mag_static_arena_destroy(&scratch);
 }
 
 API f64 
@@ -1103,8 +1120,8 @@ static BayLaMinimizationPair
 bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch)
 {
     BayLaBracketPoints bp = bayla_bracket_minima(model, n_samples, seed, scratch);
-    printf("xa = %e xb = %e xc = %e\n", bp.xa, bp.xb, bp.xc);
-    printf("fa = %e fb = %e fc = %e\n", bp.fxa, bp.fxb, bp.fxc);
+    //printf("xa = %e xb = %e xc = %e\n", bp.xa, bp.xb, bp.xc);
+    //printf("fa = %e fb = %e fc = %e\n", bp.fxa, bp.fxb, bp.fxc);
 
     size const ITMAX = 1000;
     f64 const CGOLD = 0.3819660;
@@ -1193,7 +1210,7 @@ API BayLaSamples
 bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch)
 {
     BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch);
-    printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
+    //printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
 
     return bayla_importance_sample(model, min_result.xmin, n_samples, seed, alloc);
 }
