@@ -24,6 +24,7 @@ typedef struct
 
 API BayLaSquareMatrix bayla_square_matrix_create(i32 ndim, MagAllocator *alloc);
 API BayLaSquareMatrix bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAllocator scratch);
+API void bayla_square_matrix_solve(BayLaSquareMatrix matrix, f64 *b, MagAllocator scratch);
 API void bayla_square_matrix_left_multiply(BayLaSquareMatrix matrix, f64 *input, f64 *output);
 API f64 bayla_dot_product(size ndim, f64 *left, f64 *right);
 
@@ -305,6 +306,97 @@ bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAll
     }
 
     return inv;
+}
+
+API void 
+bayla_square_matrix_solve(BayLaSquareMatrix matrix, f64 *b, MagAllocator scratch)
+{
+    i32 const n = matrix.ndim;
+
+    BayLaSquareMatrix inv = bayla_square_matrix_create(n, &scratch);
+    memcpy(inv.data, matrix.data, sizeof(f64) * n * n); 
+    f64 *a = inv.data;
+
+    i32 *indxc = eco_arena_nmalloc(&scratch, n, i32);
+    i32 *indxr = eco_arena_nmalloc(&scratch, n, i32);
+    i32 *ipiv = eco_arena_nmalloc(&scratch, n, i32);
+    
+    for(i32 i = 0; i < n; ++i) { Assert(ipiv[i] == 0); }
+
+    i32 irow = 0;
+    i32 icol = 0;
+    for(i32 i = 0; i < n; ++i)
+    {
+        f64 big = 0.0;
+        for(i32 j = 0; j < n; ++j)
+        {
+            if(ipiv[j] != 1)
+            {
+                for(i32 k = 0; k < n; ++k)
+                {
+                    if(ipiv[k] == 0)
+                    {
+                        if(fabs(a[MATRIX_IDX(j, k, n)]) >= big)
+                        {
+                            big = fabs(a[MATRIX_IDX(j, k, n)]);
+                            irow = j;
+                            icol = k;
+                        }
+                    }
+                }
+            }
+        }
+
+        ++(ipiv[icol]);
+
+        if(irow != icol)
+        {
+            for(i32 l = 0; l < n; ++l)
+            {
+                f64 tmp = a[MATRIX_IDX(icol, l, n)];
+                a[MATRIX_IDX(icol, l, n)] = a[MATRIX_IDX(irow, l, n)];
+                a[MATRIX_IDX(irow, l, n)] = tmp;
+            }
+            f64 tmp = b[irow];
+            b[irow] = b[icol];
+            b[icol] = tmp;
+        }
+
+        indxr[i] = irow;
+        indxc[i] = icol;
+
+        Assert(a[MATRIX_IDX(icol, icol, n)] != 0.0);
+
+        f64 pivinv = 1.0 / a[MATRIX_IDX(icol, icol, n)];
+        a[MATRIX_IDX(icol, icol, n)] = 1.0;
+
+        for(i32 l = 0; l < n; ++l) { a[MATRIX_IDX(icol, l, n)] *= pivinv; }
+        b[icol] *= pivinv;
+
+        for(i32 ll = 0; ll < n; ++ll)
+        {
+            if(ll != icol)
+            {
+                f64 dum = a[MATRIX_IDX(ll, icol, n)];
+                a[MATRIX_IDX(ll, icol, n)] = 0.0;
+                for(i32 l = 0; l < n; ++l) { a[MATRIX_IDX(ll, l, n)] -= a[MATRIX_IDX(icol, l, n)] * dum; }
+                b[ll] -= b[icol] * dum;
+            }
+        }
+    }
+
+    for(i32 l = n - 1; l >=0; --l)
+    {
+        if(indxr[l] != indxc[l])
+        {
+            for(i32 k = 0; k < n; ++k)
+            {
+                f64 tmp = a[MATRIX_IDX(k, indxr[l], n)];
+                a[MATRIX_IDX(k, indxr[l], n)] = a[MATRIX_IDX(k, indxc[l], n)];
+                a[MATRIX_IDX(k, indxc[l], n)] = tmp;
+            }
+        }
+    }
 }
 
 API void 
@@ -615,6 +707,7 @@ bayla_mv_norm_dist_create_from_hessian(size ndim, f64 *mean, BayLaSquareMatrix h
     for(size i = 0; i < ndim * ndim; ++i) { dist.inv_cov.data[i] = -hessian.data[i]; }
 
     dist.cov = bayla_square_matrix_invert(dist.inv_cov, alloc, scratch);
+
     for(size i = 0; i < ndim; ++i) { Assert(dist.cov.data[MATRIX_IDX(i, i, ndim)] > 0.0); } /* Check positive variance. */
 
     dist.chol = bayla_cholesky_decomp(dist.cov, alloc);

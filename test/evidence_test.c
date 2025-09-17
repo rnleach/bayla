@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 20
+#define NUM_DATA_POINTS 80
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -99,6 +99,10 @@ log_model_max_a_posteriori(void *user_data, size num_params, f64 *params_out)
 
     f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
     params_out[0] = sqrt(N * Q / (N + 1.0));
+
+#if 0
+    printf("Log Model max-a-postiori: (σ = %e)\n", params_out[0]);
+#endif
 }
 
 static BayLaSquareMatrix
@@ -194,6 +198,10 @@ constant_model_max_a_posteriori(void *user_data, size num_params, f64 *params_ou
 
     params_out[0] = y_bar;
     params_out[1] = sqrt((N / (N + 1.0)) * (y_sq_bar - y_bar * y_bar));
+
+#if 0
+    printf("Constant Model max-a-postiori: %e (σ = %e)\n", params_out[0],  params_out[1]);
+#endif
 }
 
 static BayLaSquareMatrix
@@ -315,6 +323,10 @@ linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *params_out)
 
     f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
     params_out[2] = sqrt(N / (N + 1.0) * Q);
+
+#if 0
+    printf("Linear Model max-a-postiori: %e + %e * x (σ = %e)\n", params_out[0],  params_out[1], params_out[2]);
+#endif
 }
 
 static BayLaSquareMatrix
@@ -386,6 +398,186 @@ BayLaModel linear_model =
         .user_data = &linear_user_data
     };
 
+/*-----------------------------------------------  2nd Order Polynomial  -------------------------------------------------*/
+/* param 0 is a constant, param 1 is a linear coeff, param 2 is a quadratic coeff, param 3 is a standard deviation. */
+f64 second_order_min_parms[4] = {-4.0, -4.0, -4.0, log_model_min_sigma };
+f64 second_order_max_parms[4] = {+4.0, +4.0, +4.0, log_model_max_sigma };
+
+static f64 
+second_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
+{
+    f64 v0 = parms[0];
+    f64 v0_min = second_order_min_parms[0];
+    f64 v0_max = second_order_max_parms[0];
+
+    f64 b = parms[1];
+    f64 b_min = second_order_min_parms[1];
+    f64 b_max = second_order_max_parms[1];
+
+    f64 c = parms[2];
+    f64 c_min = second_order_min_parms[2];
+    f64 c_max = second_order_max_parms[2];
+
+    f64 sigma = parms[3];
+    f64 sigma_min = second_order_min_parms[3];
+    f64 sigma_max = second_order_max_parms[3];
+    
+    if(
+            sigma < sigma_min || sigma > sigma_max 
+            || v0 < v0_min || v0 > v0_max
+            || b < b_min || b > b_max
+            || c < c_min || c > c_max
+      )
+    {
+        return -INFINITY;
+    }
+
+    f64 zc = (v0_max - v0_min) * (b_max - b_min) * (c_max - c_min) * log(sigma_max / sigma_min);
+    return -log(zc * sigma);
+}
+
+static f64 
+second_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
+{
+    f64 v0 = parms[0];
+    f64 b = parms[1];
+    f64 c = parms[2];
+    f64 sigma = parms[3];
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+    f64 x4_bar = data->x4_bar;
+    f64 y_bar = data->y_bar;
+    f64 x_bar = data->x_bar;
+    f64 xy_bar = data->xy_bar;
+    f64 x3_bar = data->x3_bar;
+    f64 y_x2_bar = data->y_x2_bar;
+
+    f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + y_sq_bar +
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + b * c * x3_bar - b * xy_bar - v0 * y_bar - c * y_x2_bar);
+
+    data->ncalls++;
+
+    return -N * 0.5 * log(ELK_2_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
+}
+
+static void
+second_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_out)
+{
+    Assert(num_parms == 4);
+
+    byte buffer2[sizeof(i32) * 3 * 3 + sizeof(f64) * 9 + _Alignof(f64)] = {0};
+    MagStaticArena scratch_ = mag_static_arena_create(sizeof(buffer2) / sizeof(buffer2[0]), buffer2);
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+    f64 x4_bar = data->x4_bar;
+    f64 y_bar = data->y_bar;
+    f64 x_bar = data->x_bar;
+    f64 xy_bar = data->xy_bar;
+    f64 x3_bar = data->x3_bar;
+    f64 y_x2_bar = data->y_x2_bar;
+
+    f64 m_data[9] = 
+        {
+                 1.0,    x_bar, x_sq_bar,
+               x_bar, x_sq_bar,   x3_bar,
+            x_sq_bar,   x3_bar,   x4_bar
+        };
+    BayLaSquareMatrix m = { .ndim = 3, .data = m_data };
+
+    f64 input[3] = { y_bar, xy_bar, y_x2_bar };
+
+    bayla_square_matrix_solve(m, input, scratch);
+    memcpy(parms_out, input, sizeof(f64) * 3);
+
+    f64 v0 = parms_out[0];
+    f64 b = parms_out[1];
+    f64 c = parms_out[2];
+
+    f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + y_sq_bar +
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + b * c * x3_bar - b * xy_bar - v0 * y_bar - c * y_x2_bar);
+
+    parms_out[3] = sqrt(N * Q / (N + 1.0));
+
+#if 0
+    printf("Second Order Model max-a-postiori: %e + %e * x + %e x**2 (σ = %e)\n",
+            parms_out[0],  parms_out[1], parms_out[2], parms_out[3]);
+#endif
+}
+
+static BayLaSquareMatrix
+second_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_posteriori_parms, MagAllocator *alloc)
+{
+    Assert(num_parms == 4);
+
+    f64 v0 = max_a_posteriori_parms[0];
+    f64 b = max_a_posteriori_parms[1];
+    f64 c = max_a_posteriori_parms[2];
+    f64 sigma = max_a_posteriori_parms[3];
+
+    UserData *data = user_data;
+    f64 N = (f64)data->N;
+    f64 y_sq_bar = data->y_sq_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+    f64 x4_bar = data->x4_bar;
+    f64 y_bar = data->y_bar;
+    f64 x_bar = data->x_bar;
+    f64 xy_bar = data->xy_bar;
+    f64 x3_bar = data->x3_bar;
+    f64 y_x2_bar = data->y_x2_bar;
+
+    f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + y_sq_bar +
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + b * c * x3_bar - b * xy_bar - v0 * y_bar - c * y_x2_bar);
+
+    f64 prior = second_order_model_log_prior(num_parms, max_a_posteriori_parms, user_data);
+    f64 likelihood = second_order_model_log_likelihood(num_parms, max_a_posteriori_parms, user_data);
+    f64 p = exp(prior + likelihood);
+    f64 sigma2 = sigma * sigma;
+    f64 sigma3 = sigma2 * sigma;
+    f64 sigma4 = sigma3 * sigma;
+
+    BayLaSquareMatrix hess = bayla_square_matrix_create(4, alloc);
+
+    hess.data[MATRIX_IDX(0, 0, 4)] = -N / sigma2;
+    hess.data[MATRIX_IDX(0, 1, 4)] = hess.data[MATRIX_IDX(1, 0, 4)] = -N * x_bar / sigma2;
+    hess.data[MATRIX_IDX(0, 2, 4)] = hess.data[MATRIX_IDX(2, 0, 4)] = -N * x_sq_bar / sigma2;
+    hess.data[MATRIX_IDX(0, 3, 4)] = hess.data[MATRIX_IDX(3, 0, 4)] = 2 * N / sigma3 * (v0 + b * x_bar + c * x_sq_bar - y_bar);
+
+    hess.data[MATRIX_IDX(1, 1, 4)] = -N / sigma2 * x_sq_bar;
+    hess.data[MATRIX_IDX(1, 2, 4)] = hess.data[MATRIX_IDX(2, 1, 4)] = -N * x3_bar / sigma2;
+    hess.data[MATRIX_IDX(1, 3, 4)] = hess.data[MATRIX_IDX(3, 1, 4)] = 2 * N / sigma3 * (v0 * x_bar + b * x_sq_bar + c * x3_bar - xy_bar);
+
+    hess.data[MATRIX_IDX(2, 2, 4)] = -N / sigma2 * x4_bar;
+    hess.data[MATRIX_IDX(2, 3, 4)] = hess.data[MATRIX_IDX(3, 2, 4)] = 2 * N / sigma3 * (v0 * x_sq_bar + b * x3_bar + c * x4_bar - y_x2_bar);
+
+    hess.data[MATRIX_IDX(3, 3, 4)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
+
+    for(size i = 0; i < 16; ++i) { hess.data[i] *= p; }
+
+    Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0 && hess.data[MATRIX_IDX(3, 3, 3)] < 0.0);
+
+    return hess;
+}
+
+UserData second_order_user_data = {0};
+
+BayLaModel second_order_model = 
+    {
+        .model_prior_probability = 1.0 / 7.0,
+        .n_parameters = 4,
+        .prior = second_order_model_log_prior,
+        .likelihood = second_order_model_log_likelihood,
+        .posterior_max = second_order_model_max_a_posteriori,
+        .hessian_matrix = second_order_model_2d_hessian,
+        .user_data = &second_order_user_data
+    };
+
 /*------------------------------------------------  Initialize UserData  -------------------------------------------------*/
 static inline void
 initialize_global_data(void)
@@ -416,6 +608,8 @@ initialize_global_data(void)
     f64 sum_y_logx = 0.0;
     f64 sum_logx_sq = 0.0;
 
+    FILE *f = fopen("test_data.csv", "wb");
+
     /* Initialize the global data, with some noise! */
     for(size i = 0; i < NUM_DATA_POINTS; ++i)
     {
@@ -424,6 +618,8 @@ initialize_global_data(void)
         global_ys[i] = natural_log_approximation_by_3rd_order_polynomial(global_xs[i], 0.9);
         f64 error = bayla_normal_distribution_random_deviate(&normal, &ran);
         global_ys[i] += error;
+
+        fprintf(f, "%.16e, %.16e\n", global_xs[i], global_ys[i]);
 
         sum_y_sq += global_ys[i] * global_ys[i];
         sum_x_sq += global_xs[i] * global_xs[i];
@@ -449,6 +645,8 @@ initialize_global_data(void)
         sum_y_logx += global_ys[i] * logx;
         sum_logx_sq += logx * logx;
     }
+
+    fclose(f);
 
     size N = NUM_DATA_POINTS;
     f64 y_sq_bar = sum_y_sq / NUM_DATA_POINTS;
@@ -509,8 +707,8 @@ initialize_global_data(void)
     log_user_data = default_ud;
     constant_user_data = default_ud;
     linear_user_data = default_ud;
-#if 0
     second_order_user_data = default_ud;
+#if 0
     third_order_user_data = default_ud;
     fourth_order_user_data = default_ud;
     fifth_order_user_data = default_ud;
@@ -520,60 +718,6 @@ initialize_global_data(void)
 #undef NUM_DATA_POINTS
 
 #if 0
-/*-----------------------------------------------  2nd Order Polynomial  -------------------------------------------------*/
-/* param 0 is a constant, param 1 is a linear coeff, param 2 is a quadratic coeff,  param 3 is a standard deviation. */
-f64 second_order_min_parms[4] = {-2.0, -4.0, -2.0, 0.0};
-f64 second_order_max_parms[4] = {+0.0, +4.0, +2.0, 20.0};
-
-static f64 second_order_parameters_log_prior(size num_parms, f64 const *parms, void *user_data)
-{
-    /* exponential with mean 1 for std-dev and uniform for all other parameters. */
-    return log((1.0 / 2.0) * (1.0 / 8.0) * (1.0 / 4.0)) - parms[3] - bayla_log1mexp(second_order_max_parms[3]);
-}
-
-static f64 second_order_parameters_log_likelihood(size num_parms, f64 const *parms, void *user_data)
-{
-    UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 c = parms[0];
-    f64 b = parms[1];
-    f64 a = parms[2];
-    f64 sigma = parms[3];
-    f64 y_sq_bar = data->y_sq_bar;
-    f64 x_sq_bar = data->x_sq_bar;
-    f64 x4_bar = data->x4_bar;
-    f64 y_bar = data->y_bar;
-    f64 x_bar = data->x_bar;
-    f64 xy_bar = data->xy_bar;
-    f64 x3_bar = data->x3_bar;
-    f64 y_x2_bar = data->y_x2_bar;
-
-    data->ncalls++;
-
-    f64 log_prob = -N * (log(sigma) + 0.5 * log(2.0 * ELK_PI));
-
-    f64 poly_term = y_sq_bar + x_sq_bar * (2.0 * a * c + b * b)
-                  + 2.0 * (a * b * x3_bar + c * b * x_bar - a * y_x2_bar - b * xy_bar - c * y_bar)
-                  + a * a * x4_bar + c * c;
-
-    log_prob -= N * poly_term / (2.0 * sigma * sigma);
-
-    return log_prob;
-}
-
-UserData second_order_user_data = {0};
-
-BayLaModel second_order_model = 
-    {
-        .model_prior_probability = 1.0 / 7.0,
-        .n_parameters = 4,
-        .prior = second_order_parameters_log_prior,
-        .likelihood = second_order_parameters_log_likelihood,
-        .min_parameter_vals = second_order_min_parms,
-        .max_parameter_vals = second_order_max_parms,
-        .user_data = &second_order_user_data
-    };
-
 /*-----------------------------------------------  3rd Order Polynomial  -------------------------------------------------*/
 /* param 0 is a constant, param 1 is a linear coeff, param 2 is a quadratic coeff, ....  param 4 is a standard deviation. */
 f64 third_order_min_parms[5] = {-2.0, -4.0, -2.0, -2.0, 0.0};
@@ -845,6 +989,26 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scrat
     bayla_samples_save_csv(&samples, ci_thresh, "linear_model.csv");
 }
 
+static inline void
+test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2)
+{
+    CoyProfileAnchor ap = {0};
+    char *model_name = "2nd Order";
+
+    MagAllocator *alloc = &alloc_;
+
+    ap = COY_START_PROFILE_BLOCK("  2nd Order Model - sample");
+    BayLaSamples samples = bayla_importance_sample_optimize(&second_order_model, 10000, 13, alloc, scratch1, scratch2);
+    BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
+    f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "second_order_model.csv");
+}
+
 /*---------------------------------------------------   All Tests    -----------------------------------------------------*/
 static inline void
 all_evidence_tests(void)
@@ -875,6 +1039,10 @@ all_evidence_tests(void)
 
     ap = COY_START_PROFILE_BLOCK("Evidence Tests Linear Model");
     test_linear_model(alloc, scratch1, scratch2);
+    COY_END_PROFILE(ap);
+
+    ap = COY_START_PROFILE_BLOCK("Evidence Tests 2nd Order Model");
+    test_2nd_order_model(alloc, scratch1, scratch2);
     COY_END_PROFILE(ap);
 
     eco_arena_destroy(&scratch2);
