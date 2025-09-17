@@ -63,8 +63,7 @@ log_model_log_prior(size num_parms, f64 const *parms, void *user_data)
         return -INFINITY;
     }
 
-    //return -log(sigma) - log(log(log_model_max_sigma / log_model_min_sigma));
-    return -log(sigma) - 0x1.5019f30f634a0p1;
+    return -log(sigma) - log(log(log_model_max_sigma / log_model_min_sigma));
 }
 
 static f64
@@ -81,7 +80,6 @@ log_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 
     f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
     f64 log_prob =  -N * 0.5 * log(2.0 * ELK_PI) - N * sigma - 0.5 * N * Q / (sigma * sigma);
-    //f64 log_prob =  N * (-0x1.d67f1c864beb4p-1 - sigma - 0.5 * Q / (sigma * sigma));
 
     return log_prob;
 }
@@ -291,10 +289,13 @@ linear_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 
     UserData *data = user_data;
     f64 N = (f64)data->N;
+
+    f64 x_bar = data->x_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+
     f64 y_bar = data->y_bar;
     f64 y_sq_bar = data->y_sq_bar;
-    f64 x_sq_bar = data->x_sq_bar;
-    f64 x_bar = data->x_bar;
+
     f64 xy_bar = data->xy_bar;
 
     data->ncalls++;
@@ -306,23 +307,42 @@ linear_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 }
 
 static void
-linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *params_out)
+linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_out)
 {
     Assert(num_parms == 3);
 
+    byte buffer2[sizeof(i32) * 2 * 3 + sizeof(f64) * 4 + _Alignof(f64)] = {0};
+    MagStaticArena scratch_ = mag_static_arena_create(sizeof(buffer2) / sizeof(buffer2[0]), buffer2);
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+
     UserData *data = user_data;
     f64 N = (f64)data->N;
+
+    f64 x_bar = data->x_bar;
+    f64 x_sq_bar = data->x_sq_bar;
+
     f64 y_bar = data->y_bar;
     f64 y_sq_bar = data->y_sq_bar;
-    f64 x_sq_bar = data->x_sq_bar;
-    f64 x_bar = data->x_bar;
+
     f64 xy_bar = data->xy_bar;
 
-    f64 v0 = params_out[0] = y_bar - (xy_bar - y_bar * x_bar) / (x_sq_bar - x_bar * x_bar) * x_bar;
-    f64 b = params_out[1] = (xy_bar - y_bar * x_bar) / (x_sq_bar - x_bar * x_bar);
+    f64 m_data[4] = 
+        {
+                 1.0,    x_bar,
+               x_bar, x_sq_bar
+        };
+    BayLaSquareMatrix m = { .ndim = 2, .data = m_data };
+
+    f64 input[2] = { y_bar, xy_bar };
+
+    bayla_square_matrix_solve(m, input, scratch);
+    memcpy(parms_out, input, sizeof(f64) * 2);
+
+    f64 v0 = parms_out[0];
+    f64 b = parms_out[1];
 
     f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
-    params_out[2] = sqrt(N / (N + 1.0) * Q);
+    parms_out[2] = sqrt(N / (N + 1.0) * Q);
 
 #if 0
     printf("Linear Model max-a-postiori: %e + %e * x (σ = %e)\n", params_out[0],  params_out[1], params_out[2]);
@@ -368,17 +388,16 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
     f64 sigma4 = sigma2 * sigma2;
     f64 beta = (xy_bar - x_bar * y_bar) / (x_sq_bar - x_bar * x_bar);
 
-    hess.data[MATRIX_IDX(2, 0, 3)] = 0;
-    hess.data[MATRIX_IDX(2, 1, 3)] = p * (2.0 * N / sigma2 / sigma * (x_bar * y_bar - xy_bar + beta * (x_sq_bar - x_bar * x_bar)));
-    hess.data[MATRIX_IDX(2, 2, 3)] = p * ((N +  1.0) / sigma2 - 3.0 * N * Q / sigma4);
+    hess.data[MATRIX_IDX(0, 0, 3)] = -N / sigma2;
+    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = -N * x_bar / sigma2;
 
-    hess.data[MATRIX_IDX(1, 0, 3)] = -p *(N * x_bar / sigma2);
-    hess.data[MATRIX_IDX(1, 1, 3)] = -p *(N *x_sq_bar / sigma2);
-    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)];
+    hess.data[MATRIX_IDX(1, 1, 3)] = -N *x_sq_bar / sigma2;
+    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 2.0 * N / sigma2 / sigma * (x_bar * y_bar - xy_bar + beta * (x_sq_bar - x_bar * x_bar));
 
-    hess.data[MATRIX_IDX(0, 0, 3)] = -p * (N / sigma2);
-    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)];
-    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)];
+    hess.data[MATRIX_IDX(2, 2, 3)] = (N +  1.0) / sigma2 - 3.0 * N * Q / sigma4;
+    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
+
+    for(size i = 0; i < 9; ++i) { hess.data[i] *= p; }
 
     Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0);
 
