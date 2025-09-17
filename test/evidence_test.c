@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 80
+#define NUM_DATA_POINTS 40
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -560,7 +560,7 @@ second_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
 
     for(size i = 0; i < 16; ++i) { hess.data[i] *= p; }
 
-    Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0 && hess.data[MATRIX_IDX(3, 3, 3)] < 0.0);
+    Assert(hess.data[MATRIX_IDX(0, 0, 4)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 4)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 4)] < 0.0 && hess.data[MATRIX_IDX(3, 3, 4)] < 0.0);
 
     return hess;
 }

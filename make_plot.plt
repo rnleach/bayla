@@ -7,7 +7,7 @@ set style fill solid
 fn = "test_data.csv"
 
 set key left
-set xrange [0.9:3.1]
+set xrange [0.09:3.01]
 plot fn using 1:2 with points pt 7 title "Raw Data"
 replot log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 4 dt 2 title "True Function"
 replot log(x) title "Log Model"
