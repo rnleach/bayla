@@ -42,7 +42,8 @@ plot fn using 1:2 with points pt 7 title "Raw Data", \
      -3.651546e-05 * x**4 + 4.348583e-01 * x**3 + -1.742574e+00 * x**2 + 3.101399e+00 * x + -1.727254e+00 lw 3 title "Fourth Order"
 
 plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function"
+     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
+     -2.364693e-05 * x**5 + 6.725241e-05 * x**4 + 3.564384e-01 * x**3 + -1.361525e+00 * x**2 + 2.588360e+00 * x + -1.568329e+00 lw 3 title "Fifth Order"
 
 unset multiplot
 unset xrange
@@ -257,7 +258,7 @@ unset title
 plot fn using 1:3:(exp($9)) with points palette pt 7 notitle
 plot fn using 2:3:(exp($9)) with points palette pt 7 notitle
 set title "c"
-plot fn using (bin($3, binwidth)):(exp($8)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+plot fn using (bin($3, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
 set multiplot next
 set multiplot next
 set multiplot next
@@ -288,6 +289,85 @@ plot fn using 4:6:(exp($9)) with points palette pt 7 notitle
 plot fn using 5:6:(exp($9)) with points palette pt 7 notitle
 set title "sigma"
 plot fn using (bin($6, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+
+unset multiplot
+
+# Fifth Order Model --------------------------------------------------------------------------------------------------------
+fn = "fifth_order_model.csv"
+set term qt 8 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Model Test"
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+set multiplot next
+set multiplot next
+set multiplot next
+set multiplot next
+set multiplot next
+set multiplot next
+
+unset title
+plot fn using 1:2:(exp($10)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+set multiplot next
+set multiplot next
+set multiplot next
+set multiplot next
+set multiplot next
+
+unset title
+plot fn using 1:3:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($10)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+set multiplot next
+set multiplot next
+set multiplot next
+set multiplot next
+
+unset title
+plot fn using 1:4:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($10)) with points palette pt 7 notitle
+set title "d"
+plot fn using (bin($4, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+set multiplot next
+set multiplot next
+set multiplot next
+
+unset title
+plot fn using 1:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($10)) with points palette pt 7 notitle
+set title "e"
+plot fn using (bin($5, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+set multiplot next
+set multiplot next
+
+unset title
+plot fn using 1:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:6:(exp($10)) with points palette pt 7 notitle
+set title "f"
+plot fn using (bin($6, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
+set multiplot next
+
+unset title
+plot fn using 1:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 6:6:(exp($10)) with points palette pt 7 notitle
+set title "sigma"
+plot fn using (bin($7, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
 
 unset multiplot
 
