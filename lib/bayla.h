@@ -190,7 +190,7 @@ typedef struct
 /* sf is the spread factor, it means multiply the variance of the Gaussian proposal distribution to get more sampling
  * in the tails.
  */
-API BayLaSamples bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
+API BayLaSamples bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
 API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname);
 API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
@@ -201,7 +201,7 @@ API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f
 /* Since we can only know the Hessian to within a constant factor, this optomizes the scale factor to maximize the effective
  * sample size.
  */
-API BayLaSamples bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
+API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
 /*---------------------------------------------------------------------------------------------------------------------------
  *
  *
@@ -801,7 +801,7 @@ bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
 }
 
 API BayLaSamples 
-bayla_importance_sample(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_)
+bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_)
 {
     MagAllocator *scratch = &scratch_;
 
@@ -1124,7 +1124,7 @@ static inline f64 min(f64 const a, f64 const b) { return a <= b ? a : b; }
 static inline f64
 bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
 {
-    BayLaSamples samples = bayla_importance_sample(model, exp(sf), n_samples, seed, &scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx(model, exp(sf), n_samples, seed, &scratch1, scratch2);
 
     return samples.valid ? -samples.neff : NAN;
 }
@@ -1308,12 +1308,12 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
 }
 
 API BayLaSamples 
-bayla_importance_sample_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2)
+bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2)
 {
     BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch1, scratch2);
     //printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
 
-    return bayla_importance_sample(model, min_result.xmin, n_samples, seed, alloc, scratch1);
+    return bayla_importance_sample_gauss_approx(model, min_result.xmin, n_samples, seed, alloc, scratch1);
 }
 
 #pragma warning(pop)

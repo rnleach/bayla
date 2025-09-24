@@ -98,7 +98,7 @@ test_simple_model(void)
             .user_data = &args
         };
 
-    BayLaSamples samples = bayla_importance_sample(&model, 1.0, 10000, 13, alloc, scratch);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx(&model, 1.0, 10000, 13, alloc, scratch);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     printf("\nndim = %2ld n_samples = %4ld neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
             samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
