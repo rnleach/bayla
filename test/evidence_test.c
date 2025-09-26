@@ -79,7 +79,7 @@ log_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
     data->ncalls++;
 
     f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
-    f64 log_prob =  -N * 0.5 * log(2.0 * ELK_PI) - N * sigma - 0.5 * N * Q / (sigma * sigma);
+    f64 log_prob =  -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
 
     return log_prob;
 }
