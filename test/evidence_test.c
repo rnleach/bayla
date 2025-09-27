@@ -148,8 +148,8 @@ BayLaModel log_model =
 
 /*--------------------------------------------------- Constant Model -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a standard deviation. */
-f64 constant_model_min_parms[2] = {-2.0, log_model_min_sigma };
-f64 constant_model_max_parms[2] = { 2.0, log_model_max_sigma };
+f64 constant_model_min_parms[2] = {-6.0, log_model_min_sigma };
+f64 constant_model_max_parms[2] = { 6.0, log_model_max_sigma };
 
 static f64 
 constant_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -264,8 +264,8 @@ BayLaModel constant_model =
 
 /*---------------------------------------------------  Linear Model  -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a linear coefficent, parameter 2 is a standard deviation. */
-f64 linear_model_min_parms[3] = {-2.0, -0.0, log_model_min_sigma };
-f64 linear_model_max_parms[3] = { 2.0,  4.0, log_model_max_sigma };
+f64 linear_model_min_parms[3] = {-6.0, -6.0, log_model_min_sigma };
+f64 linear_model_max_parms[3] = {+6.0, +6.0, log_model_max_sigma };
 
 static f64 
 linear_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -434,8 +434,8 @@ BayLaModel linear_model =
 
 /*-----------------------------------------------  2nd Order Polynomial  -------------------------------------------------*/
 /* param 0 is a constant, param 1 is a linear coeff, param 2 is a quadratic coeff, param 3 is a standard deviation. */
-f64 second_order_min_parms[4] = {-4.0, -4.0, -4.0, log_model_min_sigma };
-f64 second_order_max_parms[4] = {+4.0, +4.0, +4.0, log_model_max_sigma };
+f64 second_order_min_parms[4] = {-6.0, -6.0, -6.0, log_model_min_sigma };
+f64 second_order_max_parms[4] = {+6.0, +6.0, +6.0, log_model_max_sigma };
 
 static f64 
 second_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -619,8 +619,8 @@ BayLaModel second_order_model =
 
 /*-----------------------------------------------  3rd Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, param 4 is a standard deviation. */
-f64 third_order_min_parms[5] = {-4.0, -4.0, -4.0, -4.0, log_model_min_sigma };
-f64 third_order_max_parms[5] = {+4.0, +4.0, +4.0, +4.0, log_model_max_sigma };
+f64 third_order_min_parms[5] = {-6.0, -6.0, -6.0, -6.0, log_model_min_sigma };
+f64 third_order_max_parms[5] = {+6.0, +6.0, +6.0, +6.0, log_model_max_sigma };
 
 static f64 
 third_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -841,8 +841,8 @@ BayLaModel third_order_model =
 /*-----------------------------------------------  4th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, param 5 is a
  * standard deviation. */
-f64 fourth_order_min_parms[6] = {-4.0, -4.0, -4.0, -4.0, -4.0, log_model_min_sigma };
-f64 fourth_order_max_parms[6] = {+4.0, +4.0, +4.0, +4.0, +4.0, log_model_max_sigma };
+f64 fourth_order_min_parms[6] = {-6.0, -6.0, -6.0, -6.0, -6.0, log_model_min_sigma };
+f64 fourth_order_max_parms[6] = {+6.0, +6.0, +6.0, +6.0, +6.0, log_model_max_sigma };
 
 static f64 
 fourth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -1096,8 +1096,8 @@ BayLaModel fourth_order_model =
 /*-----------------------------------------------  5th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, parm 5 is quintic,
  * param 6 is a standard deviation. */
-f64 fifth_order_min_parms[7] = {-4.0, -4.0, -4.0, -4.0, -4.0, -4.0, log_model_min_sigma };
-f64 fifth_order_max_parms[7] = {+4.0, +4.0, +4.0, +4.0, +4.0, +4.0, log_model_max_sigma };
+f64 fifth_order_min_parms[7] = {-6.0, -6.0, -6.0, -6.0, -6.0, -6.0, log_model_min_sigma };
+f64 fifth_order_max_parms[7] = {+6.0, +6.0, +6.0, +6.0, +6.0, +6.0, log_model_max_sigma };
 
 static f64 
 fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)

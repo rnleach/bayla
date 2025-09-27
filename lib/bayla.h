@@ -598,6 +598,7 @@ bayla_logsumexp_list(size nvals, size offset, size stride, f64 *vals)
         size idx = i * stride + offset;
         if(vals[idx] > max) { max = vals[idx]; }
     }
+    if(max <= -INFINITY) { return -INFINITY; }
     Assert(max > - INFINITY);
 
     ElkKahanAccumulator result = {0};
@@ -1145,14 +1146,30 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
 
     f64 ax = max_density + log(5.0);
     f64 fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch1, scratch2);
+    while(isinf(fa) || isnan(fa))
+    {
+        ax -= log(1.1);
+        fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch1, scratch2);
+    }
 
     f64 bx = max_density + log(0.1);;
     f64 fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch1, scratch2);
+    while(isinf(fb) || isnan(fb))
+    {
+        bx += log(1.1);
+        fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch1, scratch2);
+    }
 
     if(fb > fa) { swap(&ax, &bx); swap(&fa, &fb); }
 
     f64 cx = bx + GOLD * (bx - ax);
     f64 fc = bayla_evaluate_samples_for_ess(cx, model, n_samples, seed, scratch1, scratch2);
+    while(isinf(fc) || isnan(fc))
+    {
+        cx = bx + (cx - bx) / 2.0;
+        fc = bayla_evaluate_samples_for_ess(cx, model, n_samples, seed, scratch1, scratch2);
+    }
+
 
     f64 fu = NAN;
     while(fb > fc)
