@@ -39,7 +39,7 @@ gauss_2d_hessian(void *user_data, size num_parms, f64 const *max_post_parms, Mag
 {
     Gauss2DLikelihoodTestArgs *args = user_data;
     BayLaMVNormDist *dist = &args->dist;
-    size const ndim = dist->ndim;
+    i32 const ndim = dist->ndim;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(ndim, alloc);
     memcpy(hess.data, dist->inv_cov.data, ndim * ndim * sizeof(f64));
@@ -100,7 +100,7 @@ test_simple_model(void)
 
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&model, 1.0, 10000, 13, alloc, scratch);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    printf("\nndim = %2ld n_samples = %4ld neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
+    printf("\nndim = %2td n_samples = %4td neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
             samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -223,12 +223,12 @@ crude_sampler_tests(void)
 
         if(n_points == 0) { n_points = n_samples; }
 
-        printf("n = %7ld neff = %7.0lf ratio = %5.3lf Z = %13.6e x1 = %5.2lf x2 = %5.2lf\n",
+        printf("n = %7td neff = %7.0lf ratio = %5.3lf Z = %13.6e x1 = %5.2lf x2 = %5.2lf\n",
                 n_samples, neff, neff / n_samples, z, mean_x1, mean_x2);
 
 #if 0
         char fname[100] = {0};
-        snprintf(fname, sizeof(fname), "samples_%ld.csv", n_samples);
+        snprintf(fname, sizeof(fname), "samples_%td.csv", n_samples);
         FILE *f = fopen(fname, "wb");
 
         for(size n = n_samples - 1; n >= 0; --n)
@@ -262,4 +262,3 @@ all_sampler_tests(void)
     test_simple_model();
 #endif
 }
-
