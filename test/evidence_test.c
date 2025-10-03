@@ -148,8 +148,8 @@ BayLaModel log_model =
 
 /*--------------------------------------------------- Constant Model -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a standard deviation. */
-f64 constant_model_min_parms[2] = {-6.0, log_model_min_sigma };
-f64 constant_model_max_parms[2] = { 6.0, log_model_max_sigma };
+f64 constant_model_min_parms[2] = {-6.0, 1.0e-5 };
+f64 constant_model_max_parms[2] = { 6.0, 15.0 };
 
 static f64 
 constant_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -264,8 +264,8 @@ BayLaModel constant_model =
 
 /*---------------------------------------------------  Linear Model  -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a linear coefficent, parameter 2 is a standard deviation. */
-f64 linear_model_min_parms[3] = {-6.0, -6.0, log_model_min_sigma };
-f64 linear_model_max_parms[3] = {+6.0, +6.0, log_model_max_sigma };
+f64 linear_model_min_parms[3] = {-6.0, -6.0, 1.0e-5 };
+f64 linear_model_max_parms[3] = {+6.0, +6.0, 15.0 };
 
 static f64 
 linear_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -434,8 +434,8 @@ BayLaModel linear_model =
 
 /*-----------------------------------------------  2nd Order Polynomial  -------------------------------------------------*/
 /* param 0 is a constant, param 1 is a linear coeff, param 2 is a quadratic coeff, param 3 is a standard deviation. */
-f64 second_order_min_parms[4] = {-6.0, -6.0, -6.0, log_model_min_sigma };
-f64 second_order_max_parms[4] = {+6.0, +6.0, +6.0, log_model_max_sigma };
+f64 second_order_min_parms[4] = {-6.0, -6.0, -6.0, 1.0e-5 };
+f64 second_order_max_parms[4] = {+6.0, +6.0, +6.0, 15.0 };
 
 static f64 
 second_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -619,8 +619,8 @@ BayLaModel second_order_model =
 
 /*-----------------------------------------------  3rd Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, param 4 is a standard deviation. */
-f64 third_order_min_parms[5] = {-6.0, -6.0, -6.0, -6.0, log_model_min_sigma };
-f64 third_order_max_parms[5] = {+6.0, +6.0, +6.0, +6.0, log_model_max_sigma };
+f64 third_order_min_parms[5] = {-6.0, -6.0, -6.0, -6.0, 1.0e-5 };
+f64 third_order_max_parms[5] = {+6.0, +6.0, +6.0, +6.0, 15.0 };
 
 static f64 
 third_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -841,8 +841,8 @@ BayLaModel third_order_model =
 /*-----------------------------------------------  4th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, param 5 is a
  * standard deviation. */
-f64 fourth_order_min_parms[6] = {-6.0, -6.0, -6.0, -6.0, -6.0, log_model_min_sigma };
-f64 fourth_order_max_parms[6] = {+6.0, +6.0, +6.0, +6.0, +6.0, log_model_max_sigma };
+f64 fourth_order_min_parms[6] = {-6.0, -6.0, -6.0, -6.0, -6.0, 1.0e-5 };
+f64 fourth_order_max_parms[6] = {+6.0, +6.0, +6.0, +6.0, +6.0, 15.0 };
 
 static f64 
 fourth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -1096,8 +1096,8 @@ BayLaModel fourth_order_model =
 /*-----------------------------------------------  5th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, parm 5 is quintic,
  * param 6 is a standard deviation. */
-f64 fifth_order_min_parms[7] = {-6.0, -6.0, -6.0, -6.0, -6.0, -6.0, log_model_min_sigma };
-f64 fifth_order_max_parms[7] = {+6.0, +6.0, +6.0, +6.0, +6.0, +6.0, log_model_max_sigma };
+f64 fifth_order_min_parms[7] = {-6.0, -6.0, -6.0, -6.0, -6.0, -6.0, 1.0e-5 };
+f64 fifth_order_max_parms[7] = {+6.0, +6.0, +6.0, +6.0, +6.0, +6.0, 15.0 };
 
 static f64 
 fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -1529,7 +1529,7 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -1549,7 +1549,7 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scr
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -1569,7 +1569,7 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scrat
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -1589,7 +1589,7 @@ test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -1609,7 +1609,7 @@ test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -1629,7 +1629,7 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -1649,7 +1649,7 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%10s %4ld %9ld %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%10s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
