@@ -134,8 +134,8 @@ typedef struct
     BayLaLogValue normalization_constant;
 } BayLaMVNormDist;
 
-API BayLaMVNormDist bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc);
-API BayLaMVNormDist bayla_mv_norm_dist_create_from_hessian(size ndim, f64 *mean, BayLaSquareMatrix hessian, MagAllocator *alloc);
+API BayLaMVNormDist bayla_mv_norm_dist_create(i32 ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc);
+API BayLaMVNormDist bayla_mv_norm_dist_create_from_hessian(i32 ndim, f64 *mean, BayLaSquareMatrix hessian, MagAllocator *alloc);
 
 /* returns the probability value of the associated point, workspace needs to be at least as big as dist->ndim */
 API BayLaLogValue bayla_mv_norm_dist_random_deviate(BayLaMVNormDist *dist, ElkRandomState *state, f64 *deviate, f64 *workspace);
@@ -151,7 +151,7 @@ typedef struct
 {
     
     f64 model_prior_probability;    /* Prior prob *this model* is the correct one. P(Model | I), Jaynes eq. 20.3 (pg 602) */
-    size n_parameters;              /* The number of parameters in this model.                                            */
+    i32 n_parameters;               /* The number of parameters in this model.                                            */
 
     BayLaLogPrior prior;                 /* See typedef above. P(Θ | Model, I), Jaynes eq 20.1, 20.2 (pg 602)             */
     BayLaLogLikelihood likelihood;       /* See typedef above. P(Data | Θ, Model, I), Jaynes eq 20.1, 20.2 (pg 602)       */
@@ -658,7 +658,7 @@ bayla_mv_norm_dist_validate_internal(BayLaMVNormDist *dist)
 }
 
 API BayLaMVNormDist 
-bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc)
+bayla_mv_norm_dist_create(i32 ndim, f64 *mean, BayLaSquareMatrix covar, MagAllocator *alloc)
 {
     MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_KiB(20));
     MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
@@ -694,7 +694,7 @@ bayla_mv_norm_dist_create(size ndim, f64 *mean, BayLaSquareMatrix covar, MagAllo
 }
 
 API BayLaMVNormDist 
-bayla_mv_norm_dist_create_from_hessian(size ndim, f64 *mean, BayLaSquareMatrix hessian, MagAllocator *alloc)
+bayla_mv_norm_dist_create_from_hessian(i32 ndim, f64 *mean, BayLaSquareMatrix hessian, MagAllocator *alloc)
 {
     MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_KiB(20));
     MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
@@ -807,7 +807,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
     MagAllocator *scratch = &scratch_;
 
     /* Fixed sizes and indexes. */
-    size const ndim = model->n_parameters;
+    i32 const ndim = model->n_parameters;
     size const pidx = ndim + 0;
     size const qidx = ndim + 1;
     size const widx = ndim + 2;
@@ -867,7 +867,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
 
     BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
     BayLaLogValue w2_acc = bayla_log_values_sum(n_samples, 0, 1, w2s);
-    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain(n_samples);
+    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
 
     /* w_acc^2 / w2_acc */
     samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(bayla_log_value_power(w_acc, 2), w2_acc));
@@ -1119,8 +1119,8 @@ static inline void shft3(f64 *a, f64 *b, f64 *c, f64 const d) { *a = *b; *b = *c
 static inline void mov3(f64 *a, f64 *b, f64 *c, f64 const d, f64 const e, f64 const f) { *a = d; *b = e; *c = f; }
 static inline void swap(f64 *a, f64 *b) { f64 tmp = *a; *a = *b; *b = tmp; }
 static inline f64 sign(f64 const a, f64 const b) { return b >= 0.0 ? (a >= 0.0 ? a : -a) : (a >= 0.0 ? -a : a); }
-static inline f64 max(f64 const a, f64 const b) { return a >= b ? a : b; }
-static inline f64 min(f64 const a, f64 const b) { return a <= b ? a : b; }
+static inline f64 maximum(f64 const a, f64 const b) { return a >= b ? a : b; }
+static inline f64 minimum(f64 const a, f64 const b) { return a <= b ? a : b; }
 
 static inline f64
 bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
@@ -1176,7 +1176,7 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
     {
         f64 r = (bx - ax) * (fb - fc);
         f64 q = (bx - cx) * (fb - fa);
-        f64 u = bx - ((bx - cx) * q - (bx - ax) * r) / (2.0 * sign(max(fabs(q - r), TINY), q - r));
+        f64 u = bx - ((bx - cx) * q - (bx - ax) * r) / (2.0 * sign(maximum(fabs(q - r), TINY), q - r));
         f64 ulim = bx + GLIMIT * (cx - bx);
 
         if((bx - u) * (u - cx) > 0.0)
@@ -1336,4 +1336,3 @@ bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_sa
 #pragma warning(pop)
 
 #endif
-
