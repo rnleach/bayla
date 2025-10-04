@@ -78,7 +78,6 @@ typedef struct MagDynArenaBlock MagDynArenaBlock;
 typedef struct 
 {
     MagDynArenaBlock *head_block;
-    MagDynArenaBlock *current_block;
     size current_offset;
     size default_block_size;
 
@@ -156,13 +155,8 @@ typedef struct
 
 static inline MagAllocator mag_allocator_dyn_arena_create(size default_block_size);
 static inline MagAllocator mag_allocator_static_arena_create(size buf_size, byte buffer[]);
-static inline MagAllocator mag_allocator_from_dyn_arena(MagDynArena *arena);       /* Takes ownership of arena and zeros original struct. */
-static inline MagAllocator mag_allocator_from_static_arena(MagStaticArena *arena); /* Takes ownership of arena and zeros original struct. */
-
-#define eco_allocator_take(arena) _Generic((arena),                                                                         \
-                                     MagStaticArena *: mag_allocator_from_static_arena,                                     \
-                                     MagDynArena *:    mag_allocator_from_static_arena                                      \
-                                  )(arena)
+static inline MagAllocator mag_allocator_from_dyn_arena(MagDynArena arena);       /* Takes ownership of arena. */
+static inline MagAllocator mag_allocator_from_static_arena(MagStaticArena arena); /* Takes ownership of arena. */
 
 static inline void mag_allocator_destroy(MagAllocator *arena);
 static inline void mag_allocator_reset(MagAllocator *arena); /* Clear all previous allocations. */
@@ -218,23 +212,14 @@ static inline void mag_allocator_free(MagAllocator *alloc, void *ptr);
  */
 
 
-static inline ElkStr mag_str_alloc_copy_static(ElkStr src, MagStaticArena *arena);                    /* Allocate space and create a copy.                                                        */
-static inline ElkStr mag_str_append_static(ElkStr dest, ElkStr src, MagStaticArena *arena);           /* If dest wasn't the last thing allocated on arena, this fails and returns an empty string */
-static inline ElkStr mag_str_append_cstr_static(ElkStr dest, char const *src, MagStaticArena *arena); /* If dest wasn't the last thing allocated on arena, this fails and returns an empty string */
+static inline ElkStr mag_str_alloc_copy_static(ElkStr src, MagStaticArena *arena);          /* Allocate space and create a copy.                                                        */
+static inline ElkStr mag_str_append_static(ElkStr dest, ElkStr src, MagStaticArena *arena); /* If dest wasn't the last thing allocated on arena, this fails and returns an empty string */
 
-static inline ElkStr mag_str_alloc_copy_dyn(ElkStr src, MagDynArena *arena);
 static inline ElkStr mag_str_append_dyn(ElkStr dest, ElkStr src, MagDynArena *arena); 
-static inline ElkStr mag_str_append_cstr_dyn(ElkStr dest, char const *src, MagDynArena *arena);
+static inline ElkStr mag_str_alloc_copy_dyn(ElkStr src, MagDynArena *arena);
 
-static inline ElkStr mag_str_alloc_copy_alloc(ElkStr src, MagAllocator *alloc);
 static inline ElkStr mag_str_append_alloc(ElkStr dest, ElkStr src, MagAllocator *alloc); 
-static inline ElkStr mag_str_append_cstr_alloc(ElkStr dest, char const *src, MagAllocator *alloc);
-
-#define eco_str_alloc_copy(src, alloc) _Generic((alloc),                                                                    \
-                                             MagStaticArena *: mag_str_alloc_copy_static,                                   \
-                                             MagDynArena *:    mag_str_alloc_copy_dyn,                                      \
-                                             MagAllocator *:   mag_str_alloc_copy_alloc                                     \
-                                         )(src, alloc)
+static inline ElkStr mag_str_alloc_copy_alloc(ElkStr src, MagAllocator *alloc);
 
 #define eco_str_append(dest, src, alloc) _Generic((alloc),                                                                  \
                                              MagStaticArena *: mag_str_append_static,                                       \
@@ -242,11 +227,11 @@ static inline ElkStr mag_str_append_cstr_alloc(ElkStr dest, char const *src, Mag
                                              MagAllocator *:   mag_str_append_alloc                                         \
                                          )(dest, src, alloc)
 
-#define eco_str_append_cstr(dest, src, alloc) _Generic((alloc),                                                             \
-                                                  MagStaticArena *: mag_str_append_cstr_static,                             \
-                                                  MagDynArena *:    mag_str_append_cstr_dyn,                                \
-                                                  MagAllocator *:   mag_str_append_cstr_alloc                               \
-                                              )(dest, src, alloc)
+#define eco_str_alloc_copy(src, alloc) _Generic((alloc),                                                                    \
+                                             MagStaticArena *: mag_str_alloc_copy_static,                                   \
+                                             MagDynArena *:    mag_str_alloc_copy_dyn,                                      \
+                                             MagAllocator *:   mag_str_alloc_copy_alloc                                     \
+                                         )(src, alloc)
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *
@@ -421,10 +406,11 @@ struct MagDynArenaBlock
     size max_buf_offset;
 
     struct MagDynArenaBlock *next;
+    struct MagDynArenaBlock *previous;
 };
 
 static inline MagDynArenaBlock *
-mag_dyn_arena_block_create(size block_size)
+mag_dyn_arena_block_create(size block_size, MagDynArenaBlock *prev, MagDynArenaBlock *next)
 {
     MagMemoryBlock mem = mag_sys_memory_allocate(block_size + sizeof(MagDynArenaBlock));
     if(MAG_MEM_IS_VALID(mem))
@@ -433,8 +419,8 @@ mag_dyn_arena_block_create(size block_size)
         MagDynArenaBlock *block = (void *)mem.mem;
         block->max_buf_offset = sizeof(MagDynArenaBlock);
         block->buf = mem;
-        block->next = NULL;
-
+        block->next = next;
+        block->previous = prev;
         return block;
     }
 
@@ -474,11 +460,10 @@ mag_dyn_arena_create(size default_block_size)
 {
     MagDynArena arena = {0};
 
-    MagDynArenaBlock *block = mag_dyn_arena_block_create(default_block_size);
+    MagDynArenaBlock *block = mag_dyn_arena_block_create(default_block_size, NULL, NULL);
     if(block) 
     { 
         arena.head_block = block;
-        arena.current_block = block;
         arena.current_offset = sizeof(MagDynArenaBlock);
         arena.default_block_size = default_block_size;
 
@@ -493,6 +478,9 @@ static inline void
 mag_dyn_arena_destroy(MagDynArena *arena)
 {
     MagDynArenaBlock *curr = arena->head_block;
+
+    /* Get back to the first element in the list. */
+    while(curr->previous) { curr = curr->previous; }
 
     /* Iterate through the linked list and free all the blocks. */
     while(curr)
@@ -511,15 +499,16 @@ static inline void
 mag_dyn_arena_reset(MagDynArena *arena, b32 coalesce)
 {
     /* Only actually do the coalesce if there is more than 1 block. */
-    b32 do_coalesce = coalesce && (arena->head_block->next != NULL);
+    b32 do_coalesce = coalesce && (arena->head_block->next || arena->head_block->previous);
 
     MagDynArenaBlock *curr = NULL;
     if(do_coalesce)
     {
         size allocations_ceiling = mag_dyn_arena_usage_ceiling(arena);
 
-        /* Delete all the blocks. */
+        /* Rewind to the head of the list and delete all the blocks. */
         curr = arena->head_block;
+        while(curr->previous) { curr = curr->previous; }
         while(curr)
         {
             MagDynArenaBlock *next = curr->next;
@@ -528,11 +517,10 @@ mag_dyn_arena_reset(MagDynArena *arena, b32 coalesce)
         }
 
         /* Create a block large enough to hold ALL the data from last time in a single block. */
-        MagDynArenaBlock *block = mag_dyn_arena_block_create(allocations_ceiling);
+        MagDynArenaBlock *block = mag_dyn_arena_block_create(allocations_ceiling, NULL, NULL);
         if(!block) { Panic(); } /* This shouldn't happen, we literally just freed this much or more memory! */
 
         arena->head_block = block;
-        arena->current_block = block;
         arena->current_offset = sizeof(MagDynArenaBlock);
         /* arena->default_block_size = ...doesn't need changed; */
 
@@ -541,8 +529,10 @@ mag_dyn_arena_reset(MagDynArena *arena, b32 coalesce)
     }
     else
     {
-        /* Set the new current block to the head of the list. */
-        arena->current_block  = arena->head_block;
+        /* Set the new head block to the end of the list. */
+        curr = arena->head_block;
+        while(curr->next) { curr = curr->next; }
+        arena->head_block = curr;
         arena->current_offset = sizeof(MagDynArenaBlock);
         /* arena->default_block_size = ...doesn't need changed; */
 
@@ -560,60 +550,68 @@ mag_dyn_arena_reset_default(MagDynArena *arena)
 }
 
 static inline void
-mag_dyn_arena_block_remove(MagDynArenaBlock *block, MagDynArenaBlock *prev)
+mag_dyn_arena_block_remove(MagDynArenaBlock *block)
 {
     Assert(block);
 
+    MagDynArenaBlock *prev = block->previous;
     MagDynArenaBlock *next = block->next;
+
     if(prev) { prev->next = next; }
+    if(next) { next->previous = prev; }
 }
 
 static inline void
-mag_dyn_arena_block_insert(MagDynArenaBlock *block, MagDynArenaBlock *after_this_one, MagDynArenaBlock *before_this_one)
+mag_dyn_arena_block_insert(MagDynArenaBlock *block, MagDynArenaBlock *before_this_one)
 {
-    Assert(block);
-
-    if(after_this_one) { after_this_one->next = block; }
+    Assert(before_this_one && block);
+    block->previous = before_this_one->previous;
+    before_this_one->previous = block;
     block->next = before_this_one;
+    if(block->previous)
+    {
+        block->previous->next = block;
+    }
 }
 
 static inline MagDynArenaBlock *
 mag_dyn_arena_add_block_internal(MagDynArena *arena, size min_bytes)
 {
 
-    /* Search through the list to find a large enough block. */
-
-    /* Take the first one if possible, no fixup needed. */
-    MagDynArenaBlock *curr = arena->current_block->next;
-    MagDynArenaBlock *prev = NULL;
-    if(curr)
+    if(arena->head_block->previous)
     {
-        if(curr->buf.size >= min_bytes + (size)sizeof(MagDynArenaBlock)) { return curr; }
-        prev = curr;
-        curr = curr->next;
-    }
-
-    while(curr)
-    {
-        if(curr->buf.size >= min_bytes + (size)sizeof(MagDynArenaBlock))
+        /* Search backwards in the list, and find a large enough block. */
+        MagDynArenaBlock *candidate = arena->head_block->previous;
+        
+        if(candidate->buf.size >= min_bytes)
         {
-            prev->next = curr->next;
-            curr->next = arena->current_block->next;
-            arena->current_block->next = curr;
-            return curr;
+            /* If it's the next block, just move the head pointer and it's good to go. */
+            arena->head_block = candidate;
+            return candidate;
         }
+        else
+        {
+            candidate = candidate->previous;
+            while(candidate)
+            {
+                if(candidate->buf.size >= min_bytes)
+                {
+                    mag_dyn_arena_block_remove(candidate);
+                    mag_dyn_arena_block_insert(candidate, arena->head_block);
+                    arena->head_block = candidate;
+                    return candidate;
+                }
 
-        prev = curr;
-        curr = curr->next;
+                candidate = candidate->previous;
+            }
+        }
     }
 
-    /* If you couldn't find a large enough block on the main list, create a new one and insert it. */
-    MagDynArenaBlock *block = mag_dyn_arena_block_create(min_bytes);
-    if(!block) { return NULL; }
-
-    block->next = arena->current_block->next;
-    arena->current_block->next = block;
-    arena->current_block = block;
+    /* If you couldn't find a large enough block on the main list, create a new one and insert it at the heads. */
+    MagDynArenaBlock *block = mag_dyn_arena_block_create(min_bytes, arena->head_block->previous, arena->head_block);
+    if(block->previous) { block->previous->next = block; }
+    if(block->next)     { block->next->previous = block; }
+    arena->head_block = block;
 
     return block;
 }
@@ -624,7 +622,7 @@ mag_dyn_arena_alloc(MagDynArena *arena, size num_bytes, size alignment)
     Assert(num_bytes > 0 && alignment > 0);
 
     /* Look for space in the current block. */
-    MagDynArenaBlock *block = arena->current_block;
+    MagDynArenaBlock *block = arena->head_block;
     void *ptr = mag_dyn_arena_block_alloc(arena, block, num_bytes, alignment);
     if(ptr) { return ptr; }
 
@@ -649,10 +647,10 @@ mag_dyn_arena_realloc(MagDynArena *arena, void *ptr, size num_bytes, size alignm
     if(ptr == arena->prev_ptr)
     {
         /* Get previous extra offset due to alignment */
-        uptr offset = (uptr)ptr - (uptr)arena->current_block->buf.mem; /* relative offset accounting for alignment */
+        uptr offset = (uptr)ptr - (uptr)arena->head_block->buf.mem; /* relative offset accounting for alignment */
 
         /* Check to see if there is enough space left */
-        if ((size)(offset + num_bytes) <= arena->current_block->buf.size)
+        if ((size)(offset + num_bytes) <= arena->head_block->buf.size)
         {
             arena->current_offset = offset + num_bytes;
             return ptr;
@@ -686,6 +684,9 @@ mag_dyn_arena_usage_ceiling(MagDynArena *arena)
     size total_allocation_size = 0;
 
     MagDynArenaBlock *curr = arena->head_block;
+
+    /* Get back to the first element in the list. */
+    while(curr->previous) { curr = curr->previous; }
 
     while(curr)
     {
@@ -793,18 +794,16 @@ mag_allocator_static_arena_create(size buf_size, byte buffer[])
 }
 
 static inline MagAllocator 
-mag_allocator_from_dyn_arena(MagDynArena *arena)
+mag_allocator_from_dyn_arena(MagDynArena arena)
 {
-    MagAllocator alloc = { .type = MAG_ALLOC_T_DYN_ARENA, .dyn_arena = *arena };
-    *arena = (MagDynArena) {0};
+    MagAllocator alloc = { .type = MAG_ALLOC_T_DYN_ARENA, .dyn_arena = arena };
     return alloc;
 }
 
 static inline MagAllocator 
-mag_allocator_from_static_arena(MagStaticArena *arena)
+mag_allocator_from_static_arena(MagStaticArena arena)
 {
-    MagAllocator alloc = { .type = MAG_ALLOC_T_STATIC_ARENA, .static_arena = *arena };
-    *arena = (MagStaticArena) {0};
+    MagAllocator alloc = { .type = MAG_ALLOC_T_STATIC_ARENA, .static_arena = arena };
     return alloc;
 }
 
@@ -890,7 +889,7 @@ mag_str_append_static(ElkStr dest, ElkStr src, MagStaticArena *arena)
 
     size new_len = dest.len + src.len;
     char *buf = dest.start;
-    buf = mag_static_arena_nrealloc(arena, buf, new_len + 1, char); /* +1 for null terminator. */
+    buf = mag_static_arena_nrealloc(arena, buf, new_len, char);
 
     if(!buf) { return result; }
 
@@ -898,46 +897,8 @@ mag_str_append_static(ElkStr dest, ElkStr src, MagStaticArena *arena)
     result.len = new_len;
     char *dest_ptr = dest.start + dest.len;
     memcpy(dest_ptr, src.start, src.len);
-    result.start[result.len] = '\0';
 
     return result;
-}
-
-static inline ElkStr 
-mag_str_append_cstr_static(ElkStr dest, char const *src, MagStaticArena *arena)
-{
-    ElkStr result = {0};
-
-    size src_len = 0;
-    while(src[src_len]) { ++src_len; }
-
-    size new_len = dest.len + src_len;
-    char *buf = dest.start;
-    buf = mag_static_arena_nrealloc(arena, buf, new_len + 1, char); /* +1 for null terminator. */
-
-    if(!buf) { return result; }
-
-    result.start = buf;
-    result.len = new_len;
-    char *dest_ptr = dest.start + dest.len;
-    memcpy(dest_ptr, src, src_len);
-    result.start[result.len] = '\0';
-
-    return result;
-}
-
-static inline ElkStr 
-mag_str_alloc_copy_dyn(ElkStr src, MagDynArena *arena)
-{
-    ElkStr ret_val = {0};
-
-    size copy_len = src.len + 1; /* Add room for terminating zero. */
-    char *buffer = mag_dyn_arena_nmalloc(arena, copy_len, char);
-    StopIf(!buffer, return ret_val); /* Return NULL string if out of memory */
-
-    ret_val = elk_str_copy(copy_len, buffer, src);
-
-    return ret_val;
 }
 
 static inline ElkStr 
@@ -949,7 +910,7 @@ mag_str_append_dyn(ElkStr dest, ElkStr src, MagDynArena *arena)
 
     size new_len = dest.len + src.len;
     char *buf = dest.start;
-    buf = mag_dyn_arena_nrealloc(arena, buf, new_len + 1, char); /* +1 for null terminator */
+    buf = mag_dyn_arena_nrealloc(arena, buf, new_len, char);
 
     if(!buf)
     { 
@@ -976,59 +937,18 @@ mag_str_append_dyn(ElkStr dest, ElkStr src, MagDynArena *arena)
         char *dest_ptr = dest.start + dest.len;
         memcpy(dest_ptr, src.start, src.len);
     }
-    result.start[result.len] = '\0';
 
     return result;
 }
 
 static inline ElkStr 
-mag_str_append_cstr_dyn(ElkStr dest, char const *src, MagDynArena *arena)
-{
-    ElkStr result = {0};
-
-    size src_len = 0;
-    while(src[src_len]) { ++src_len; }
-
-    size new_len = dest.len + src_len;
-    char *buf = dest.start;
-    buf = mag_dyn_arena_nrealloc(arena, buf, new_len + 1, char); /* +1 for null terminator. */
-
-    if(!buf)
-    { 
-        /* Failed to grow in place. */
-        buf = mag_dyn_arena_nmalloc(arena, new_len + 1, char);
-        if(buf)
-        {
-            char *dest_ptr = buf;
-            memcpy(dest_ptr, dest.start, dest.len);
-            dest_ptr = dest_ptr + dest.len;
-            memcpy(dest_ptr, src, src_len);
-
-            result.start = buf;
-            result.len = new_len;
-        }
-    }
-    else
-    {
-        /* Grew in place! */
-        result.start = buf;
-        result.len = new_len;
-        char *dest_ptr = dest.start + dest.len;
-        memcpy(dest_ptr, src, src_len);
-    }
-    result.start[result.len] = '\0';
-
-    return result;
-}
-
-static inline ElkStr 
-mag_str_alloc_copy_alloc(ElkStr src, MagAllocator *alloc)
+mag_str_alloc_copy_dyn(ElkStr src, MagDynArena *arena)
 {
     ElkStr ret_val = {0};
 
     size copy_len = src.len + 1; /* Add room for terminating zero. */
-    char *buffer = mag_allocator_nmalloc(alloc, copy_len, char);
-    StopIf(!buffer, return ret_val); /* Return NULL string if out of memory. */
+    char *buffer = mag_dyn_arena_nmalloc(arena, copy_len, char);
+    StopIf(!buffer, return ret_val); /* Return NULL string if out of memory */
 
     ret_val = elk_str_copy(copy_len, buffer, src);
 
@@ -1044,7 +964,7 @@ mag_str_append_alloc(ElkStr dest, ElkStr src, MagAllocator *alloc)
 
     size new_len = dest.len + src.len;
     char *buf = dest.start;
-    buf = mag_allocator_nrealloc(alloc, buf, new_len + 1, char); /* +1 for null terminator */
+    buf = mag_allocator_nrealloc(alloc, buf, new_len, char);
 
     if(!buf)
     { 
@@ -1071,49 +991,22 @@ mag_str_append_alloc(ElkStr dest, ElkStr src, MagAllocator *alloc)
         char *dest_ptr = dest.start + dest.len;
         memcpy(dest_ptr, src.start, src.len);
     }
-    result.start[result.len] = '\0';
 
     return result;
 }
 
 static inline ElkStr 
-mag_str_append_cstr_alloc(ElkStr dest, char const *src, MagAllocator *alloc)
+mag_str_alloc_copy_alloc(ElkStr src, MagAllocator *alloc)
 {
-    ElkStr result = {0};
+    ElkStr ret_val = {0};
 
-    size src_len = 0;
-    while(src[src_len]) { ++src_len; }
+    size copy_len = src.len + 1; /* Add room for terminating zero. */
+    char *buffer = mag_allocator_nmalloc(alloc, copy_len, char);
+    StopIf(!buffer, return ret_val); /* Return NULL string if out of memory. */
 
-    size new_len = dest.len + src_len;
-    char *buf = dest.start;
-    buf = mag_allocator_nrealloc(alloc, buf, new_len + 1, char); /* +1 for null terminator. */
+    ret_val = elk_str_copy(copy_len, buffer, src);
 
-    if(!buf)
-    { 
-        /* Failed to grow in place. */
-        buf = mag_allocator_nmalloc(alloc, new_len + 1, char);
-        if(buf)
-        {
-            char *dest_ptr = buf;
-            memcpy(dest_ptr, dest.start, dest.len);
-            dest_ptr = dest_ptr + dest.len;
-            memcpy(dest_ptr, src, src_len);
-
-            result.start = buf;
-            result.len = new_len;
-        }
-    }
-    else
-    {
-        /* Grew in place! */
-        result.start = buf;
-        result.len = new_len;
-        char *dest_ptr = dest.start + dest.len;
-        memcpy(dest_ptr, src, src_len);
-    }
-    result.start[result.len] = '\0';
-
-    return result;
+    return ret_val;
 }
 
 #if defined(_WIN32) || defined(_WIN64)
