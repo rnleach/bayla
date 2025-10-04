@@ -3,6 +3,9 @@
 bayla-test
 *.gdb_history
 
+#data files
+*.csv
+
 # Prerequisites
 *.d
 

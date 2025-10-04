@@ -40,7 +40,7 @@ basic_functions(void)
     Assert(bayla_logsumexp(- INFINITY, INFINITY) == INFINITY);
 
     f64 vals[] = {- INFINITY, 0.0, 0.0 };
-    Assert(bayla_logsumexp_list(sizeof(vals) / sizeof(vals[0]), vals) == ELK_LN2);
+    Assert(bayla_logsumexp_list(sizeof(vals) / sizeof(vals[0]), 0, 1, vals) == ELK_LN2);
 }
 
 static inline void
@@ -235,7 +235,7 @@ reciprocal_and_power(void)
 /*--------------------------------------------------------------------------------------------------------------------------
  *                                             Run All Log-Domain Math Tests
  *------------------------------------------------------------------------------------------------------------------------*/
-static inline void
+static void
 all_log_math_tests(void)
 {
     printf("\n             Log-Domain Math Tests\n");
