@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 400
+#define NUM_DATA_POINTS 40
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -1547,7 +1547,7 @@ save_max_a_posteriori_models_gnuplot_script(void)
     second_order_model_max_a_posteriori(&second_order_user_data, second_order_model.n_parameters, params);
     fprintf(f, "%s,\\\n", pre);
     fprintf(f, "     %e * x**2 + %e *x + %e lw 3 title \"Second Order\"\n\n", 
-            params[1], params[1], params[0]);
+            params[2], params[1], params[0]);
 
     third_order_model_max_a_posteriori(&third_order_user_data, third_order_model.n_parameters, params);
     fprintf(f, "%s,\\\n", pre);
