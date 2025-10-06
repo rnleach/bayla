@@ -1380,7 +1380,7 @@ BayLaModel fifth_order_model =
 
 /*------------------------------------------------  Initialize UserData  -------------------------------------------------*/
 static inline void
-initialize_global_data(void)
+initialize_global_data(size punk_data_points)
 {
     BayLaNormalDistribution normal = bayla_normal_distribution_create(0.0, 0.25);
     ElkRandomState ran = elk_random_state_create(13);
@@ -1448,7 +1448,7 @@ initialize_global_data(void)
 
     fclose(f);
 
-    size N = NUM_DATA_POINTS;
+    size N = punk_data_points;
     f64 y_sq_bar = sum_y_sq / NUM_DATA_POINTS;
     f64 x_sq_bar = sum_x_sq / NUM_DATA_POINTS;
     f64 x4_bar = sum_x4 / NUM_DATA_POINTS;
@@ -1512,8 +1512,6 @@ initialize_global_data(void)
     fourth_order_user_data = default_ud;
     fifth_order_user_data = default_ud;
 }
-
-#undef NUM_DATA_POINTS
 
 /*---------------------------------------------------  Test Models   -----------------------------------------------------*/
 static inline void
@@ -1670,7 +1668,7 @@ all_evidence_tests(void)
     CoyProfileAnchor ap = {0};
 
     ap = COY_START_PROFILE_BLOCK("Evidence Tests Init Data");
-    initialize_global_data();
+    initialize_global_data(NUM_DATA_POINTS);
     COY_END_PROFILE(ap);
 
     printf("%-10s %-4s %-9s %-6s %-15s %-33s\n",

@@ -26,6 +26,9 @@ API BayLaSquareMatrix bayla_square_matrix_create(i32 ndim, MagAllocator *alloc);
 API BayLaSquareMatrix bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAllocator scratch);
 API void bayla_square_matrix_solve(BayLaSquareMatrix matrix, f64 *b, MagAllocator scratch);
 API void bayla_square_matrix_left_multiply(BayLaSquareMatrix matrix, f64 *input, f64 *output);
+API void bayla_square_matrix_print(BayLaSquareMatrix matrix);
+API void bayla_square_matrix_print_symmetric_error(BayLaSquareMatrix matrix);
+API BayLaSquareMatrix bayla_square_matrix_covariance_to_corr(BayLaSquareMatrix matrix, MagAllocator *alloc);
 API f64 bayla_dot_product(size ndim, f64 *left, f64 *right);
 
 typedef struct
@@ -214,6 +217,11 @@ API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const 
 _Static_assert(sizeof(BayLaLogValue) == sizeof(f64));
 _Static_assert(_Alignof(BayLaLogValue) == _Alignof(f64));
 
+static inline void swap(f64 *a, f64 *b) { f64 tmp = *a; *a = *b; *b = tmp; }
+static inline f64 sign(f64 const a, f64 const b) { return b >= 0.0 ? (a >= 0.0 ? a : -a) : (a >= 0.0 ? -a : a); }
+static inline f64 maximum(f64 const a, f64 const b) { return a >= b ? a : b; }
+static inline f64 minimum(f64 const a, f64 const b) { return a <= b ? a : b; }
+
 API BayLaSquareMatrix 
 bayla_square_matrix_create(i32 ndim, MagAllocator *alloc)
 {
@@ -235,8 +243,6 @@ bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAll
     i32 *indxr = eco_arena_nmalloc(&scratch, n, i32);
     i32 *ipiv = eco_arena_nmalloc(&scratch, n, i32);
     
-    for(i32 i = 0; i < n; ++i) { Assert(ipiv[i] == 0); }
-
     i32 irow = 0;
     i32 icol = 0;
     for(i32 i = 0; i < n; ++i)
@@ -302,6 +308,15 @@ bayla_square_matrix_invert(BayLaSquareMatrix matrix, MagAllocator *alloc, MagAll
                 a[MATRIX_IDX(k, indxr[l], n)] = a[MATRIX_IDX(k, indxc[l], n)];
                 a[MATRIX_IDX(k, indxc[l], n)] = tmp;
             }
+        }
+    }
+
+    /* Assume symmetric matrix. */
+    for(i32 r = 0; r < n; ++r)
+    {
+        for(i32 c = 0; c < r; ++c)
+        {
+            a[MATRIX_IDX(r, c, n)] = a[MATRIX_IDX(c, r, n)] = 0.5 * (a[MATRIX_IDX(r, c, n)] + a[MATRIX_IDX(c, r, n)]);
         }
     }
 
@@ -410,6 +425,68 @@ bayla_square_matrix_left_multiply(BayLaSquareMatrix matrix, f64 *input, f64 *out
             output[i] += input[j] * matrix.data[MATRIX_IDX(i, j, matrix.ndim)];
         }
     }
+}
+
+API void 
+bayla_square_matrix_print(BayLaSquareMatrix matrix)
+{
+    printf("\n");
+    i32 n = matrix.ndim;
+    for(i32 r = 0; r < n; ++r)
+    {
+        printf("| ");
+        for(i32 c = 0; c < n; ++c)
+        {
+            printf(" %10.2e ", matrix.data[MATRIX_IDX(r, c, n)]);
+        }
+        printf(" |\n");
+    }
+    printf("\n");
+}
+
+API void 
+bayla_square_matrix_print_symmetric_error(BayLaSquareMatrix matrix)
+{
+    printf("\n");
+    i32 n = matrix.ndim;
+    for(i32 r = 0; r < n; ++r)
+    {
+        printf("| ");
+        for(i32 c = 0; c < n; ++c)
+        {
+            f64 error_ratio = (matrix.data[MATRIX_IDX(r, c, n)] - matrix.data[MATRIX_IDX(c, r, n)]) / matrix.data[MATRIX_IDX(r, c, n)];
+            if(isnan(error_ratio)) { error_ratio = 0.0; }
+            printf(" %10.2e ", error_ratio);
+        }
+        printf(" |\n");
+    }
+    printf("\n");
+}
+
+API BayLaSquareMatrix 
+bayla_square_matrix_covariance_to_corr(BayLaSquareMatrix matrix, MagAllocator *alloc)
+{
+    i32 const n = matrix.ndim;
+    BayLaSquareMatrix corr = bayla_square_matrix_create(n, alloc);
+
+    MagAllocator scratch = *alloc;
+
+    f64 *sig = eco_arena_nmalloc(&scratch, n, f64);
+    
+    for(i32 i = 0; i < n; ++i)
+    {
+        sig[i] = 1.0 / sqrt(matrix.data[MATRIX_IDX(i, i, n)]);
+    }
+
+    for(i32 i = 0; i < n; ++i)
+    {
+        for(i32 j = 0; j < n; ++j)
+        {
+            corr.data[MATRIX_IDX(i, j, n)] = matrix.data[MATRIX_IDX(i, j, n)] * sig[i] * sig[j];
+        }
+    }
+
+    return corr;
 }
 
 API f64 
@@ -708,6 +785,8 @@ bayla_mv_norm_dist_create_from_hessian(i32 ndim, f64 *mean, BayLaSquareMatrix he
     for(size i = 0; i < ndim * ndim; ++i) { dist.inv_cov.data[i] = -hessian.data[i]; }
 
     dist.cov = bayla_square_matrix_invert(dist.inv_cov, alloc, scratch);
+    //bayla_square_matrix_print_symmetric_error(dist.cov);
+    //bayla_square_matrix_print(bayla_square_matrix_covariance_to_corr(dist.cov, alloc));
 
     for(size i = 0; i < ndim; ++i) { Assert(dist.cov.data[MATRIX_IDX(i, i, ndim)] > 0.0); } /* Check positive variance. */
 
@@ -1117,10 +1196,6 @@ typedef struct
 static inline void shft2(f64 *a, f64 *b, f64 const c) { *a = *b; *b = c; }
 static inline void shft3(f64 *a, f64 *b, f64 *c, f64 const d) { *a = *b; *b = *c; *c = d; }
 static inline void mov3(f64 *a, f64 *b, f64 *c, f64 const d, f64 const e, f64 const f) { *a = d; *b = e; *c = f; }
-static inline void swap(f64 *a, f64 *b) { f64 tmp = *a; *a = *b; *b = tmp; }
-static inline f64 sign(f64 const a, f64 const b) { return b >= 0.0 ? (a >= 0.0 ? a : -a) : (a >= 0.0 ? -a : a); }
-static inline f64 maximum(f64 const a, f64 const b) { return a >= b ? a : b; }
-static inline f64 minimum(f64 const a, f64 const b) { return a <= b ? a : b; }
 
 static inline f64
 bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
