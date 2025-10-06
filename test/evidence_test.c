@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 40
+#define NUM_DATA_POINTS 105
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
