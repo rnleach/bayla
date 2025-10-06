@@ -1202,7 +1202,7 @@ bayla_evaluate_samples_for_ess(f64 sf, BayLaModel const *model, size n_samples, 
 {
     BayLaSamples samples = bayla_importance_sample_gauss_approx(model, exp(sf), n_samples, seed, &scratch1, scratch2);
 
-    return samples.valid ? -samples.neff : NAN;
+    return samples.valid ? -samples.neff : 1.0e6;
 }
 
 /* We're looking for a maxima, but bayla_evaluate_samples_for_ess turns it to a negative, so now we're looking for a minima.
@@ -1245,7 +1245,6 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
         fc = bayla_evaluate_samples_for_ess(cx, model, n_samples, seed, scratch1, scratch2);
     }
 
-
     f64 fu = NAN;
     while(fb > fc)
     {
@@ -1271,6 +1270,12 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
 
             u = cx + GOLD * (cx - bx);
             fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
+            while(isinf(fu) || isnan(fu))
+            {
+                u = bx + (u - bx) / 2.0;
+                fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
+            }
+
         }
         else if ((cx - u) * (u - ulim) > 0.0)
         {
@@ -1291,6 +1296,12 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
         {
             u = cx + GOLD * (cx - bx);
             fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
+            while(isinf(fu) || isnan(fu))
+            {
+                u = bx + (u - bx) / 2.0;
+                fu = bayla_evaluate_samples_for_ess(u, model, n_samples, seed, scratch1, scratch2);
+            }
+
         }
 
         shft3(&ax, &bx, &cx, u);
