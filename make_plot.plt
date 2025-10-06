@@ -7,46 +7,7 @@ set style fill solid
 fn = "test_data.csv"
 set term qt 0 size 1600,800
 
-set key left
-set xrange [0.09:3.01]
-
-set origin 0,0
-set size 2,4
-set multiplot layout 2,4 rowsfirst scale 0.9, 0.9 title "Test Data"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     log(x) lw 3 title "Log Model"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     7.180454e-01 lw 3 title "Constant"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     1.409042e+00 * x + -1.465970e+00 lw 3 title "Linear"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     2.848551e-01 * x**2 + 5.259913e-01 * x + -9.914793e-01 lw 3 title "Second Order"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     4.245637e-01 * x**3 + -1.689366e+00 * x**2 + 3.023451e+00 * x + -1.700497e+00 lw 3 title "Third Order"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     -3.651546e-05 * x**4 + 4.348583e-01 * x**3 + -1.742574e+00 * x**2 + 3.101399e+00 * x + -1.727254e+00 lw 3 title "Fourth Order"
-
-plot fn using 1:2 with points pt 7 title "Raw Data", \
-     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title "True Function", \
-     -2.364693e-05 * x**5 + 6.725241e-05 * x**4 + 3.564384e-01 * x**3 + -1.361525e+00 * x**2 + 2.588360e+00 * x + -1.568329e+00 lw 3 title "Fifth Order"
-
-unset multiplot
-unset xrange
+load "obs_models.plt"
 
 # Simple Model -------------------------------------------------------------------------------------------------------------
 fn = "simple_model.csv"

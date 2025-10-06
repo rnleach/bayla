@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 40
+#define NUM_DATA_POINTS 400
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -1513,6 +1513,62 @@ initialize_global_data(size punk_data_points)
     fifth_order_user_data = default_ud;
 }
 
+static void
+save_max_a_posteriori_models_gnuplot_script(void)
+{
+    f64 params[7] = {0};
+
+    char *fname = "obs_models.plt";
+    FILE *f = fopen(fname, "wb");
+
+    fprintf(f, "set key left\n");
+    fprintf(f, "set xrange [0.09:3.01]\n\n");
+    fprintf(f, "set origin 0,0\n");
+    fprintf(f, "set size 2,4\n\n");
+    fprintf(f, "set multiplot layout 2,4 rowsfirst scale 0.9, 0.9 title \"Test Data\"\n\n");
+
+    char *pre = "plot fn using 1:2 with points pt 7 title \"Raw Data\",\\\n"
+                "     log(0.9) + (x - 0.9) / 0.9 - (x - 0.9)**2 / (2 * 0.9**2) + (x -  0.9)**3 / (3 * 0.9**3) lw 2 dt 2 title \"True Function\"";
+
+    fprintf(f, "%s\n\n", pre);
+
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     log(x) lw 3 title \"Log Model\"\n\n");
+
+    constant_model_max_a_posteriori(&constant_user_data, constant_model.n_parameters, params);
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     %e lw 3 title \"Constant\"\n\n", params[0]);
+
+    linear_model_max_a_posteriori(&linear_user_data, linear_model.n_parameters, params);
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     %e *x + %e lw 3 title \"Linear\"\n\n", 
+            params[1], params[0]);
+
+    second_order_model_max_a_posteriori(&second_order_user_data, second_order_model.n_parameters, params);
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     %e * x**2 + %e *x + %e lw 3 title \"Second Order\"\n\n", 
+            params[1], params[1], params[0]);
+
+    third_order_model_max_a_posteriori(&third_order_user_data, third_order_model.n_parameters, params);
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Third Order\"\n\n", 
+            params[3], params[2], params[1], params[0]);
+
+    fourth_order_model_max_a_posteriori(&fourth_order_user_data, fourth_order_model.n_parameters, params);
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     %e * x**4 + %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Third Order\"\n\n", 
+            params[4], params[3], params[2], params[1], params[0]);
+
+    fifth_order_model_max_a_posteriori(&fifth_order_user_data, fifth_order_model.n_parameters, params);
+    fprintf(f, "%s,\\\n", pre);
+    fprintf(f, "     %e * x**5 + %e * x**4 + %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Third Order\"\n\n", 
+            params[5], params[4], params[3], params[2], params[1], params[0]);
+
+    fprintf(f, "unset multiplot\nunset xrange\n\n");
+
+    fclose(f);
+}
+
 /*---------------------------------------------------  Test Models   -----------------------------------------------------*/
 static inline void
 test_log_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2)
@@ -1701,6 +1757,8 @@ all_evidence_tests(void)
     ap = COY_START_PROFILE_BLOCK("Evidence Tests 5th Order Model");
     test_5th_order_model(alloc, scratch1, scratch2);
     COY_END_PROFILE(ap);
+
+    save_max_a_posteriori_models_gnuplot_script();
 
     eco_arena_destroy(&scratch2);
     eco_arena_destroy(&scratch1);

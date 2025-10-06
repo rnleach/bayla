@@ -4,6 +4,7 @@ bayla-test
 *.gdb_history
 
 #data files
+obs_models.plt
 *.csv
 
 # Prerequisites
