@@ -104,6 +104,10 @@ API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val);
 API BayLaLogValue bayla_log_value_power(BayLaLogValue base, f64 exponent);
 API BayLaLogValue bayla_log_values_sum(size nvals, size offset, size stride, BayLaLogValue *vals);
 
+#define bayla_log_value_equal(left, right) ((left.val) == (right.val))
+#define bayla_log_value_is_zero(log_val) (isinf(log_val.val) && (log_val.val) < 0.0)
+#define bayla_log_value_is_nan(log_val) (isnan(log_val.val))
+
 /* Functions that have less overflow / underflow / rounding errors than naive implementations.  */
 API f64 bayla_log1mexp(f64 x);                                                 /* log(1 - exp(-x))                        */
 API f64 bayla_log1pexp(f64 x);                                                 /* log(1 + exp(+x))                        */
@@ -936,6 +940,18 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
         f64 *row = &rows[s * ncols];
         BayLaLogValue ld_qi = bayla_mv_norm_dist_random_deviate(&prop_dist, state, row, workspace);
         BayLaLogValue ld_pi = bayla_model_evaluate(model, row);
+
+        if(
+                   bayla_log_value_is_nan(ld_qi)
+                || bayla_log_value_is_nan(ld_pi)
+                || bayla_log_value_is_zero(ld_qi)
+                || bayla_log_value_is_zero(ld_pi)
+          )
+        {
+            --s; /* Redo this iteration. */
+            continue;
+        }
+
         row[pidx] = ld_pi.val;
         row[qidx] = ld_qi.val;
         row[widx] = row[pidx] - row[qidx];
