@@ -1233,9 +1233,8 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
 
     f64 *max_a_posteriori_parms = eco_arena_nmalloc(&scratch1, model->n_parameters, f64);
     model->posterior_max(model->user_data, model->n_parameters, max_a_posteriori_parms);
-    f64 max_density = bayla_model_evaluate(model, max_a_posteriori_parms).val;
 
-    f64 ax = max_density + log(5.0);
+    f64 ax = 0.0 + log(5.0);
     f64 fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch1, scratch2);
     while(isinf(fa) || isnan(fa))
     {
@@ -1243,7 +1242,7 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
         fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch1, scratch2);
     }
 
-    f64 bx = max_density + log(0.1);;
+    f64 bx = 0.0 + log(0.1);;
     f64 fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch1, scratch2);
     while(isinf(fb) || isnan(fb))
     {

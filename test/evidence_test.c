@@ -102,10 +102,6 @@ log_model_max_a_posteriori(void *user_data, size num_params, f64 *params_out)
     {
         Assert(params_out[i] >= log_model_min_sigma && params_out[i] <= log_model_max_sigma);
     }
-
-#if 0
-    printf("Log Model max-a-postiori: (σ = %e)\n", params_out[0]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -123,10 +119,9 @@ log_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_posterio
     f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(1, alloc);
-    hess.data[0] = pow(2.0 * ELK_PI, - N / 2.0) / log(log_model_max_sigma / log_model_min_sigma);
     f64 sigma2 = sigma * sigma;
     f64 sigma4 = sigma2 * sigma2;
-    hess.data[0] *= pow(sigma, -(N + 1)) * exp(- 0.5 * N * Q / sigma2) * ((N + 1) / sigma2 - (3.0 * N * Q / sigma4));
+    hess.data[0] = (N + 1) / sigma2 - 3.0 * N * Q / sigma4;
 
     Assert(hess.data[0] < 0.0);
 
@@ -206,10 +201,6 @@ constant_model_max_a_posteriori(void *user_data, size num_params, f64 *params_ou
     {
         Assert(params_out[i] >= constant_model_min_parms[i] && params_out[i] <= constant_model_max_parms[i]);
     }
-
-#if 0
-    printf("Constant Model max-a-postiori: %e (σ = %e)\n", params_out[0],  params_out[1]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -218,12 +209,7 @@ constant_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_pos
     Assert(num_params == 2);
 
     f64 v0 = max_a_posteriori_params[0];
-    f64 v0_min = constant_model_min_parms[0];
-    f64 v0_max = constant_model_max_parms[0];
-
     f64 sigma = max_a_posteriori_params[1];
-    f64 sigma_min = constant_model_min_parms[1];
-    f64 sigma_max = constant_model_max_parms[1];
 
     UserData *data = user_data;
     f64 N = (f64)data->N;
@@ -234,15 +220,13 @@ constant_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_pos
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(2, alloc);
 
-    f64 prior = -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min));
-    f64 likelihood = -N * (log(sigma) + 0.5 * log(2.0 * ELK_PI));
-    likelihood -= N * (y_sq_bar - 2.0 * y_bar * v0 + v0 * v0) / (2.0 * sigma * sigma);
-    f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
     f64 sigma4 = sigma2 * sigma2;
 
-    hess.data[MATRIX_IDX(0, 0, 2)] = -N / sigma2 * p;
-    hess.data[MATRIX_IDX(1, 1, 2)] = ((N + 1.0) / sigma2 - 3.0 * N * Q / sigma4) * p;
+    hess.data[MATRIX_IDX(0, 0, 2)] = -N / sigma2;
+    hess.data[MATRIX_IDX(0, 1, 2)] = hess.data[MATRIX_IDX(1, 0, 2)] = 0.0;
+
+    hess.data[MATRIX_IDX(1, 1, 2)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
 
     Assert(hess.data[MATRIX_IDX(0, 0, 2)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 2)] < 0.0 );
 
@@ -358,10 +342,6 @@ linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_out)
     {
         Assert(parms_out[i] >= linear_model_min_parms[i] && parms_out[i] <= linear_model_max_parms[i]);
     }
-
-#if 0
-    printf("Linear Model max-a-postiori: %e + %e * x (σ = %e)\n", params_out[0],  params_out[1], params_out[2]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -370,19 +350,8 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
     Assert(num_parms == 3);
 
     f64 v0 = max_a_posteriori_parms[0];
-    f64 v0_min = linear_model_min_parms[0];
-    f64 v0_max = linear_model_max_parms[0];
-    Assert(v0 > v0_min && v0 < v0_max);
-
     f64 b = max_a_posteriori_parms[1];
-    f64 b_min = linear_model_min_parms[1];
-    f64 b_max = linear_model_max_parms[1];
-    Assert(b > b_min && b < b_max);
-
     f64 sigma = max_a_posteriori_parms[2];
-    f64 sigma_min = linear_model_min_parms[2];
-    f64 sigma_max = linear_model_max_parms[2];
-    Assert(sigma > sigma_min && sigma < sigma_max);
 
     UserData *data = user_data;
     f64 N = (f64)data->N;
@@ -396,23 +365,18 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(3, alloc);
 
-    f64 prior = -log(sigma * log(sigma_max / sigma_min) * (v0_max - v0_min) * (b_max - b_min));
-    f64 likelihood = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
-    f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
-    f64 sigma4 = sigma2 * sigma2;
-    f64 beta = (xy_bar - x_bar * y_bar) / (x_sq_bar - x_bar * x_bar);
 
-    hess.data[MATRIX_IDX(0, 0, 3)] = -N / sigma2;
-    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = -N * x_bar / sigma2;
-
-    hess.data[MATRIX_IDX(1, 1, 3)] = -N *x_sq_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 2.0 * N / sigma2 / sigma * (x_bar * y_bar - xy_bar + beta * (x_sq_bar - x_bar * x_bar));
-
-    hess.data[MATRIX_IDX(2, 2, 3)] = (N +  1.0) / sigma2 - 3.0 * N * Q / sigma4;
+    hess.data[MATRIX_IDX(0, 0, 3)] = 1.0;
+    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = x_bar;
     hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
 
-    for(size i = 0; i < 9; ++i) { hess.data[i] *= p; }
+    hess.data[MATRIX_IDX(1, 1, 3)] = x_sq_bar;
+    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = -2.0 / sigma * (v0 * x_bar + b * x_sq_bar - xy_bar);
+
+    hess.data[MATRIX_IDX(2, 2, 3)] = -(N +  1.0) / N + 3.0 * Q / sigma2;
+
+    for(size i = 0; i < 9; ++i) { hess.data[i] *= -N / sigma2; }
 
     Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0);
 
@@ -544,10 +508,6 @@ second_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_
         Assert(parms_out[i] >= second_order_min_parms[i] && parms_out[i] <= second_order_max_parms[i]);
     }
 
-#if 0
-    printf("Second Order Model max-a-postiori: %e + %e * x + %e x**2 (σ = %e)\n",
-            parms_out[0],  parms_out[1], parms_out[2], parms_out[3]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -574,9 +534,6 @@ second_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + y_sq_bar +
             2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + b * c * x3_bar - b * xy_bar - v0 * y_bar - c * y_x2_bar);
 
-    f64 prior = second_order_model_log_prior(num_parms, max_a_posteriori_parms, user_data);
-    f64 likelihood = second_order_model_log_likelihood(num_parms, max_a_posteriori_parms, user_data);
-    f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
@@ -596,8 +553,6 @@ second_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
     hess.data[MATRIX_IDX(2, 3, 4)] = hess.data[MATRIX_IDX(3, 2, 4)] = 2 * N / sigma3 * (v0 * x_sq_bar + b * x3_bar + c * x4_bar - y_x2_bar);
 
     hess.data[MATRIX_IDX(3, 3, 4)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
-
-    for(size i = 0; i < 16; ++i) { hess.data[i] *= p; }
 
     Assert(hess.data[MATRIX_IDX(0, 0, 4)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 4)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 4)] < 0.0 && hess.data[MATRIX_IDX(3, 3, 4)] < 0.0);
 
@@ -749,11 +704,6 @@ third_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_o
     {
         Assert(parms_out[i] >= third_order_min_parms[i] && parms_out[i] <= third_order_max_parms[i]);
     }
-
-#if 0
-    printf("Third Order Model max-a-postiori: %e + %e * x + %e x**2  + %e x**3 (σ = %e)\n",
-            parms_out[0],  parms_out[1], parms_out[2], parms_out[3], parms_out[4]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -788,10 +738,6 @@ third_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
             2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + b * c * x3_bar + b * d * x4_bar + c * d * x5_bar
                     - v0 * y_bar - b * xy_bar - c * y_x2_bar - d * y_x3_bar);
 
-
-    f64 prior = third_order_model_log_prior(num_parms, max_a_posteriori_parms, user_data);
-    f64 likelihood = third_order_model_log_likelihood(num_parms, max_a_posteriori_parms, user_data);
-    f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
@@ -817,8 +763,6 @@ third_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
     hess.data[MATRIX_IDX(3, 4, 5)] = hess.data[MATRIX_IDX(4, 3, 5)] = 2 * N / sigma3 * (v0 * x3_bar + b * x4_bar + c * x5_bar + d * x6_bar - y_x3_bar);
 
     hess.data[MATRIX_IDX(4, 4, 5)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
-
-    for(size i = 0; i < 25; ++i) { hess.data[i] *= p; }
 
     Assert(hess.data[MATRIX_IDX(0, 0, 5)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 5)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 5)] < 0.0 && hess.data[MATRIX_IDX(3, 3, 5)] < 0.0 && hess.data[MATRIX_IDX(4, 4, 5)] < 0.0);
 
@@ -991,11 +935,6 @@ fourth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_
     {
         Assert(parms_out[i] >= fourth_order_min_parms[i] && parms_out[i] <= fourth_order_max_parms[i]);
     }
-
-#if 0
-    printf("Fourth Order Model max-a-postiori: %e + %e * x + %e x**2  + %e x**3 + %e x**4 (σ = %e)\n",
-            parms_out[0],  parms_out[1], parms_out[2], parms_out[3], parms_out[4], parms_out[5]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -1037,9 +976,6 @@ fourth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
                    + d * e * x7_bar
                    - v0 * y_bar - b * xy_bar - c * y_x2_bar - d * y_x3_bar - e * y_x4_bar);
 
-    f64 prior = fourth_order_model_log_prior(num_parms, max_a_posteriori_parms, user_data);
-    f64 likelihood = fourth_order_model_log_likelihood(num_parms, max_a_posteriori_parms, user_data);
-    f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
@@ -1072,8 +1008,6 @@ fourth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
     hess.data[MATRIX_IDX(4, 5, 6)] = hess.data[MATRIX_IDX(5, 4, 6)] =  2 * N / sigma3 * (v0 * x4_bar + b * x5_bar + c * x6_bar + d * x7_bar + e * x8_bar - y_x4_bar);
 
     hess.data[MATRIX_IDX(5, 5, 6)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
-
-    for(size i = 0; i < num_parms * num_parms; ++i) { hess.data[i] *= p; }
 
     for(size i = 0; i < num_parms; ++i) { Assert(hess.data[MATRIX_IDX(i, i, 6)] < 0.0); }
 
@@ -1262,11 +1196,6 @@ fifth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_o
     {
         Assert(parms_out[i] >= fifth_order_min_parms[i] && parms_out[i] <= fifth_order_max_parms[i]);
     }
-
-#if 0
-    printf("Fifth Order Model max-a-postiori: %e + %e * x + %e x**2  + %e x**3 + %e x**4 + %e x**5 (σ = %e)\n",
-            parms_out[0],  parms_out[1], parms_out[2], parms_out[3], parms_out[4], parms_out[5], parms_out[6]);
-#endif
 }
 
 static BayLaSquareMatrix
@@ -1313,9 +1242,6 @@ fifth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
                    + e * f * x9_bar
                    - v0 * y_bar - b * xy_bar - c * y_x2_bar - d * y_x3_bar - e * y_x4_bar - f * y_x5_bar);
 
-    f64 prior = fifth_order_model_log_prior(num_parms, max_a_posteriori_parms, user_data);
-    f64 likelihood = fifth_order_model_log_likelihood(num_parms, max_a_posteriori_parms, user_data);
-    f64 p = exp(prior + likelihood);
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
@@ -1356,8 +1282,6 @@ fifth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
     hess.data[MATRIX_IDX(5, 6, 7)] = hess.data[MATRIX_IDX(6, 5, 7)] =  2 * N / sigma3 * (v0 * x5_bar + b * x6_bar + c * x7_bar + d * x8_bar + e * x9_bar + f * x10_bar - y_x5_bar);
 
     hess.data[MATRIX_IDX(6, 6, 7)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
-
-    for(size i = 0; i < num_parms * num_parms; ++i) { hess.data[i] *= p; }
 
     for(size i = 0; i < num_parms; ++i) { Assert(hess.data[MATRIX_IDX(i, i, 7)] < 0.0); }
 
@@ -1579,7 +1503,7 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  Log Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&log_model, 10000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&log_model, 1000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -1679,7 +1603,7 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  4th Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fourth_order_model, 100000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fourth_order_model, 20000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -1699,7 +1623,7 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  5th Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fifth_order_model, 200000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fifth_order_model, 10000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     f64 ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
