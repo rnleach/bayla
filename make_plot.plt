@@ -73,8 +73,12 @@ binwidth = (STATS_max - STATS_min) / bw_factor
 
 set title "V0"
 plot fn using (bin($1, binwidth)):(exp($5)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
 unset title
+
+stats fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
 
 stats fn using 2
 binwidth = (STATS_max - STATS_min) / bw_factor
@@ -98,22 +102,33 @@ binwidth = (STATS_max - STATS_min) / bw_factor
 
 set title "V0"
 plot fn using (bin($1, binwidth)):(exp($6)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
 
 stats fn using 2
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:2:(exp($6)) with points palette pt 7 notitle
 set title "b"
 plot fn using (bin($2, binwidth)):(exp($6)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
+unset title
+
+stats fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
 
 stats fn using 3
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:3:(exp($6)) with points palette pt 7 notitle
 plot fn using 2:3:(exp($6)) with points palette pt 7 notitle
 set title "sigma"
@@ -134,9 +149,23 @@ binwidth = (STATS_max - STATS_min) / bw_factor
 
 set title "V0"
 plot fn using (bin($1, binwidth)):(exp($7)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset xrange
+unset yrange
+unset label 1
 
 stats fn using 2
 binwidth = (STATS_max - STATS_min) / bw_factor
@@ -145,18 +174,32 @@ unset title
 plot fn using 1:2:(exp($7)) with points palette pt 7 notitle
 set title "b"
 plot fn using (bin($2, binwidth)):(exp($7)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 3
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:3:(exp($7)) with points palette pt 7 notitle
 plot fn using 2:3:(exp($7)) with points palette pt 7 notitle
 set title "c"
 plot fn using (bin($3, binwidth)):(exp($7)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
+unset title
+
+stats fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 4
 binwidth = (STATS_max - STATS_min) / bw_factor
@@ -183,48 +226,88 @@ binwidth = (STATS_max - STATS_min) / bw_factor
 
 set title "V0"
 plot fn using (bin($1, binwidth)):(exp($8)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 2
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:2:(exp($8)) with points palette pt 7 notitle
 set title "b"
 plot fn using (bin($2, binwidth)):(exp($8)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset xrange
+unset yrange
+unset label 1
 
 stats fn using 3
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:3:(exp($8)) with points palette pt 7 notitle
 plot fn using 2:3:(exp($8)) with points palette pt 7 notitle
 set title "c"
 plot fn using (bin($3, binwidth)):(exp($7)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 4
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:4:(exp($8)) with points palette pt 7 notitle
 plot fn using 2:4:(exp($8)) with points palette pt 7 notitle
 plot fn using 3:4:(exp($8)) with points palette pt 7 notitle
 set title "d"
 plot fn using (bin($4, binwidth)):(exp($8)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
+unset title
+
+stats fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 5
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:5:(exp($8)) with points palette pt 7 notitle
 plot fn using 2:5:(exp($8)) with points palette pt 7 notitle
 plot fn using 3:5:(exp($8)) with points palette pt 7 notitle
@@ -247,64 +330,119 @@ binwidth = (STATS_max - STATS_min) / bw_factor
 
 set title "V0"
 plot fn using (bin($1, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 2
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:2:(exp($9)) with points palette pt 7 notitle
 set title "b"
 plot fn using (bin($2, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 3
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:3:(exp($9)) with points palette pt 7 notitle
 plot fn using 2:3:(exp($9)) with points palette pt 7 notitle
 set title "c"
 plot fn using (bin($3, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 3:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 4
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:4:(exp($9)) with points palette pt 7 notitle
 plot fn using 2:4:(exp($9)) with points palette pt 7 notitle
 plot fn using 3:4:(exp($9)) with points palette pt 7 notitle
 set title "d"
 plot fn using (bin($4, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 4:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 5
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:5:(exp($9)) with points palette pt 7 notitle
 plot fn using 2:5:(exp($9)) with points palette pt 7 notitle
 plot fn using 3:5:(exp($9)) with points palette pt 7 notitle
 plot fn using 4:5:(exp($9)) with points palette pt 7 notitle
 set title "e"
 plot fn using (bin($5, binwidth)):(exp($9)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
+unset title
+
+stats fn using 5:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 6
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:6:(exp($9)) with points palette pt 7 notitle
 plot fn using 2:6:(exp($9)) with points palette pt 7 notitle
 plot fn using 3:6:(exp($9)) with points palette pt 7 notitle
@@ -328,69 +466,139 @@ binwidth = (STATS_max - STATS_min) / bw_factor
 
 set title "V0"
 plot fn using (bin($1, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 1:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 2
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:2:(exp($10)) with points palette pt 7 notitle
 set title "b"
 plot fn using (bin($2, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 2:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 3
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:3:(exp($10)) with points palette pt 7 notitle
 plot fn using 2:3:(exp($10)) with points palette pt 7 notitle
 set title "c"
 plot fn using (bin($3, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 3:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 3:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 4
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:4:(exp($10)) with points palette pt 7 notitle
 plot fn using 2:4:(exp($10)) with points palette pt 7 notitle
 plot fn using 3:4:(exp($10)) with points palette pt 7 notitle
 set title "d"
 plot fn using (bin($4, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 4:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 4:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 5
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:5:(exp($10)) with points palette pt 7 notitle
 plot fn using 2:5:(exp($10)) with points palette pt 7 notitle
 plot fn using 3:5:(exp($10)) with points palette pt 7 notitle
 plot fn using 4:5:(exp($10)) with points palette pt 7 notitle
 set title "e"
 plot fn using (bin($5, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
-set multiplot next
+unset title
+
+stats fn using 5:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats fn using 5:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 6
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
 plot fn using 1:6:(exp($10)) with points palette pt 7 notitle
 plot fn using 2:6:(exp($10)) with points palette pt 7 notitle
 plot fn using 3:6:(exp($10)) with points palette pt 7 notitle
@@ -398,18 +606,23 @@ plot fn using 4:6:(exp($10)) with points palette pt 7 notitle
 plot fn using 5:6:(exp($10)) with points palette pt 7 notitle
 set title "f"
 plot fn using (bin($6, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
-set multiplot next
+unset title
+
+stats fn using 6:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
 
 stats fn using 7
 binwidth = (STATS_max - STATS_min) / bw_factor
 
-unset title
-plot fn using 1:6:(exp($10)) with points palette pt 7 notitle
-plot fn using 2:6:(exp($10)) with points palette pt 7 notitle
-plot fn using 3:6:(exp($10)) with points palette pt 7 notitle
-plot fn using 4:6:(exp($10)) with points palette pt 7 notitle
-plot fn using 5:6:(exp($10)) with points palette pt 7 notitle
-plot fn using 6:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 1:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 6:7:(exp($10)) with points palette pt 7 notitle
 set title "sigma"
 plot fn using (bin($7, binwidth)):(exp($10)) smooth kdensity bandwidth binwidth with l lw 4 lc 19 notitle
 
