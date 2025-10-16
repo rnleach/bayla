@@ -1242,7 +1242,7 @@ bayla_bracket_minima(BayLaModel const *model, size n_samples, u64 seed, MagAlloc
         fa = bayla_evaluate_samples_for_ess(ax, model, n_samples, seed, scratch1, scratch2);
     }
 
-    f64 bx = 0.0 + log(0.1);;
+    f64 bx = 0.0 + log(0.1);
     f64 fb = bayla_evaluate_samples_for_ess(bx, model, n_samples, seed, scratch1, scratch2);
     while(isinf(fb) || isnan(fb))
     {
@@ -1339,12 +1339,10 @@ static BayLaMinimizationPair
 bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2)
 {
     BayLaBracketPoints bp = bayla_bracket_minima(model, n_samples, seed, scratch1, scratch2);
-    //printf("xa = %e xb = %e xc = %e\n", bp.xa, bp.xb, bp.xc);
-    //printf("fa = %e fb = %e fc = %e\n", bp.fxa, bp.fxb, bp.fxc);
 
     size const ITMAX = 1000;
     f64 const CGOLD = 0.3819660;
-    f64 const ZEPS = 0.0; /* DBL_EPSILON * 1.0e-3; */ /* We're going to be dealing with VERY small numbers. */
+    f64 const ZEPS = DBL_EPSILON;
     f64 const tol = 3.0e-8;
 
     f64 d = NAN;
@@ -1429,8 +1427,6 @@ API BayLaSamples
 bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2)
 {
     BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch1, scratch2);
-    //printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
-
     return bayla_importance_sample_gauss_approx(model, min_result.xmin, n_samples, seed, alloc, scratch1);
 }
 

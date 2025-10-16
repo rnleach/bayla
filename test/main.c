@@ -29,7 +29,7 @@ main(int argc, char *argv[])
     printf("\n  ---------- Finished Tests ----------\n");
     coy_profile_end();
 
-#if COY_PROFILE
+#if COY_PROFILE && 0
     printf("Total Runtime = %.3lf seconds at a frequency of %"PRIu64"\n",
             coy_global_profiler.total_elapsed, coy_global_profiler.freq);
 
