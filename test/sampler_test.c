@@ -119,7 +119,7 @@ test_simple_model(void)
             x0_exp.val, 3.0 * x0_exp.std, 100.0 * fabs(3.0 * x0_exp.std / x0_exp.val),
             x1_exp.val, 3.0 * x1_exp.std, 100.0 * fabs(3.0 * x1_exp.std / x1_exp.val));
 
-    bayla_samples_save_csv(&samples, p_thresh, "simple_model.csv");
+    bayla_samples_save_csv(&samples, p_thresh, "simple_model.csv", scratch);
 
     eco_arena_destroy(&scratch);
     eco_arena_destroy(alloc);

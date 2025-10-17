@@ -1511,7 +1511,7 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "log_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "log_model.csv", scratch1);
 }
 
 static inline void
@@ -1531,7 +1531,7 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scr
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "constant_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "constant_model.csv", scratch1);
 }
 
 static inline void
@@ -1551,7 +1551,7 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scrat
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "linear_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "linear_model.csv", scratch1);
 }
 
 static inline void
@@ -1571,7 +1571,7 @@ test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "second_order_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "second_order_model.csv", scratch1);
 }
 
 static inline void
@@ -1591,7 +1591,7 @@ test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "third_order_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "third_order_model.csv", scratch1);
 }
 
 static inline void
@@ -1611,7 +1611,7 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "fourth_order_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "fourth_order_model.csv", scratch1);
 }
 
 static inline void
@@ -1631,7 +1631,7 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    bayla_samples_save_csv(&samples, ci_thresh, "fifth_order_model.csv");
+    bayla_samples_save_csv(&samples, ci_thresh, "fifth_order_model.csv", scratch1);
 }
 
 /*---------------------------------------------------   All Tests    -----------------------------------------------------*/

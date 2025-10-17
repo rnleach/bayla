@@ -194,20 +194,16 @@ typedef struct
     f64 std;
 } BayLaErrorValue;
 
-/* sf is the spread factor, it means multiply the variance of the Gaussian proposal distribution to get more sampling
- * in the tails.
- */
+/* sf is the spread factor, it means multiply the variance of the Gaussian proposal distribution to get more sampling in the tails. */
 API BayLaSamples bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
-API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname);
+API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname, MagAllocator scratch);
 API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
 API BayLaCredibleInterval bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch);
 API BayLaErrorValue bayla_samples_estimate_evidence(BayLaSamples *samples);
 API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud);
 
-/* Since we can only know the Hessian to within a constant factor, this optomizes the scale factor to maximize the effective
- * sample size.
- */
+/* This optomizes the scale factor to maximize the effective sample size. */
 API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
 /*---------------------------------------------------------------------------------------------------------------------------
  *
@@ -972,7 +968,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
 }
 
 API void 
-bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname)
+bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname, MagAllocator scratch)
 {
     FILE *f = fopen(fname, "wb");
 
@@ -984,7 +980,6 @@ bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname
     size const widx = ndim + 2;
     size const ncols = ndim + 3;
 
-    MagStaticArena scratch = mag_static_arena_allocate_and_create(ncols * n_samples * sizeof(f64));
     f64 *row_scratch = eco_arena_nmalloc(&scratch, ncols * n_samples, f64);
     Assert(row_scratch);
 
@@ -1009,8 +1004,6 @@ bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname
     }
 
     fclose(f);
-
-    mag_static_arena_destroy(&scratch);
 }
 
 API f64 
@@ -1054,8 +1047,8 @@ bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAlloca
 
 typedef struct
 {
-    f64 prob;
-    f64 wgt;
+    ElkKahanAccumulator prob;
+    ElkKahanAccumulator wgt;
     f64 x;
 } BayLaInternalCISortRecord;
 
@@ -1090,7 +1083,8 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
     BayLaInternalCISortRecord *recs = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
     for(size b = 0; b < nbins; ++b)
     {
-        recs[b].x = min_x + b * dx + 0.5 * dx;
+        recs[b].x = min_x + ((f64)b + 0.5) * dx;
+        /* prob and wgt are correctly zero initialized on memory allocation. */
     }
 
     /* Project the data probability (counts) and weights onto the parameter axis. */
@@ -1101,20 +1095,21 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
         f64 const p = exp(rows[r * ncols + pidx]);
         size bin = (size)round((x - min_x) / dx);
 
-        recs[bin].prob += p;
-        recs[bin].wgt += w;
+        recs[bin].prob = elk_kahan_accumulator_add(recs[bin].prob, p);
+        recs[bin].wgt = elk_kahan_accumulator_add(recs[bin].wgt, w);
     }
 
     /* Sort in order of decreasing probability (count) */
     BayLaInternalCISortRecord *sort_scratch = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
     pak_radix_sort(
-            recs,                  /* The buffer to sort.                                   */
-            nbins,                 /* The number of items in the buffer.                    */
-            0,                     /* Offset into the object for the item we're sorting by. */
-            sizeof(*recs),         /* The stride, or how large a single row is.             */
-            sort_scratch,          /* Scratch memory for doing the search.                  */
-            PAK_RADIX_SORT_F64,    /* Sorting F64s.                                         */
-            PAK_SORT_DESCENDING);  /* Sort in descending order.                             */
+            recs,                                      /* The buffer to sort.                                   */
+            nbins,                                     /* The number of items in the buffer.                    */
+            offsetof(BayLaInternalCISortRecord, prob) + offsetof(ElkKahanAccumulator, sum),
+                                                       /* Offset into the object for the item we're sorting by. */
+            sizeof(*recs),                             /* The stride, or how large a single row is.             */
+            sort_scratch,                              /* Scratch memory for doing the sort.                    */
+            PAK_RADIX_SORT_F64,                        /* Sorting F64s.                                         */
+            PAK_SORT_DESCENDING);                      /* Sort in descending order.                             */
 
     BayLaCredibleInterval ci = {.low = DBL_MAX, .high = -DBL_MAX };
     ElkKahanAccumulator weight = {0};
@@ -1123,15 +1118,12 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
     {
         ++bin;
         BayLaInternalCISortRecord rec = recs[bin];
-        weight = elk_kahan_accumulator_add(weight, rec.wgt);
+        weight = elk_kahan_accumulator_add(elk_kahan_accumulator_add(weight, rec.wgt.sum), rec.wgt.err);
         ci.low = rec.x < ci.low ? rec.x : ci.low;
         ci.high = rec.x > ci.high ? rec.x : ci.high;
     }
 
-    if(ci.high < ci.low)
-    {
-        ci.high = ci.low = NAN;
-    }
+    if(ci.high < ci.low) { ci.high = ci.low = NAN; }
 
     return ci;
 }
