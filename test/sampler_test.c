@@ -107,8 +107,10 @@ test_simple_model(void)
     f64 p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.95, scratch);
     printf("p_thresh = %lf\n", p_thresh);
 
-    BayLaCredibleInterval x0_ci = bayla_samples_calculate_ci(&samples, 0.95, 0, scratch);
-    BayLaCredibleInterval x1_ci = bayla_samples_calculate_ci(&samples, 0.95, 1, scratch);
+    BayLaMarginalDist mdist_x0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    BayLaCredibleInterval x0_ci = bayla_marginal_dist_calculate_ci(mdist_x0, 0.95, scratch);
+    BayLaMarginalDist mdist_x1 = bayla_samples_marginal_dist(&samples, 1, alloc);
+    BayLaCredibleInterval x1_ci = bayla_marginal_dist_calculate_ci(mdist_x1, 0.95, scratch);
 
     BayLaErrorValue x0_exp = bayla_samples_calculate_expectation(&samples, get_param0, NULL);
     BayLaErrorValue x1_exp = bayla_samples_calculate_expectation(&samples, get_param1, NULL);

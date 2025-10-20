@@ -182,29 +182,40 @@ typedef struct
     b32 valid;
 } BayLaSamples;
 
-typedef struct
-{
-    f64 low;
-    f64 high;
-} BayLaCredibleInterval;
-
 typedef struct 
 {
     f64 val;
     f64 std;
 } BayLaErrorValue;
 
-/* sf is the spread factor, it means multiply the variance of the Gaussian proposal distribution to get more sampling in the tails. */
+/* sf is spread factor, or multiply the variance of the Gaussian proposal distribution to get more/less sampling in the tails */
 API BayLaSamples bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
+/* This optomizes the scale factor to maximize the effective sample size. */
+API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
 API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname, MagAllocator scratch);
 API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
-API BayLaCredibleInterval bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch);
 API BayLaErrorValue bayla_samples_estimate_evidence(BayLaSamples *samples);
 API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud);
 
-/* This optomizes the scale factor to maximize the effective sample size. */
-API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
+typedef struct
+{
+    size nbins;
+    f64 *xs;
+    f64 *densities;
+} BayLaMarginalDist;
+
+API BayLaMarginalDist bayla_samples_marginal_dist(BayLaSamples *samples, size parm_idx, MagAllocator *alloc);
+API void bayla_marginal_dist_save_csv(BayLaMarginalDist mdist, char const *fname);
+
+typedef struct
+{
+    f64 low;
+    f64 high;
+} BayLaCredibleInterval;
+
+API BayLaCredibleInterval bayla_marginal_dist_calculate_ci(BayLaMarginalDist mdist, f64 ci_pct, MagAllocator scratch);
+
 /*---------------------------------------------------------------------------------------------------------------------------
  *
  *
@@ -1045,82 +1056,116 @@ bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAlloca
     return NAN;
 }
 
-typedef struct
+API BayLaMarginalDist 
+bayla_samples_marginal_dist(BayLaSamples *samples, size parm_idx, MagAllocator *alloc)
 {
-    ElkKahanAccumulator prob;
-    ElkKahanAccumulator wgt;
-    f64 x;
-} BayLaInternalCISortRecord;
-
-API BayLaCredibleInterval 
-bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch)
-{
-    Assert(ci_pct > 0.0 && ci_pct <= 1.0);
-    Assert(param_idx >= 0 && param_idx < samples->ndim);
+    Assert(parm_idx >= 0 && parm_idx < samples->ndim);
 
     size const n_samples = samples->n_samples;
     size const ndim = samples->ndim;
     size const ncols = ndim + 3;
-    size const pidx = ndim + 0;
     size const widx = ndim + 2;
-    size const nbins = n_samples / 10;
+    size const nbins = 100;
 
     f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
     f64 const *const rows = samples->rows;
+
+    /* Allocations. */
+    f64 *xs = eco_arena_nmalloc(alloc, nbins, f64);
+    f64 *densities = eco_arena_nmalloc(alloc, nbins, f64);
+    MagAllocator scratch = *alloc;
+    ElkKahanAccumulator *wgts = eco_arena_nmalloc(&scratch, nbins, ElkKahanAccumulator);
 
     /* Find the minimum and maximum values in our dataset. */
     f64 min_x = DBL_MAX;
     f64 max_x = -DBL_MAX;
     for(size r = 0; r < n_samples; ++r)
     {
-        f64 const x = rows[r * ncols + param_idx];
+        f64 const x = rows[r * ncols + parm_idx];
         min_x = min_x < x ? min_x : x;
         max_x = max_x > x ? max_x : x;
     }
 
     /* Set up the bins and their values. */
     f64 dx = (max_x - min_x) / nbins;
-    BayLaInternalCISortRecord *recs = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
     for(size b = 0; b < nbins; ++b)
     {
-        recs[b].x = min_x + ((f64)b + 0.5) * dx;
-        /* prob and wgt are correctly zero initialized on memory allocation. */
+        xs[b] = min_x + ((f64)b + 0.5) * dx;
+        /* densities and wgts are correctly zero initialized on memory allocation. */
     }
 
     /* Project the data probability (counts) and weights onto the parameter axis. */
     for(size r = 0; r < n_samples; ++r)
     {
-        f64 const x = rows[r * ncols + param_idx];
+        f64 const x = rows[r * ncols + parm_idx];
         f64 const w = exp(rows[r * ncols + widx]);
-        f64 const p = exp(rows[r * ncols + pidx]);
         size bin = (size)round((x - min_x) / dx);
 
-        recs[bin].prob = elk_kahan_accumulator_add(recs[bin].prob, p);
-        recs[bin].wgt = elk_kahan_accumulator_add(recs[bin].wgt, w);
+        wgts[bin] = elk_kahan_accumulator_add(wgts[bin], w);
     }
 
-    /* Sort in order of decreasing probability (count) */
+    /* Normalize so the area under the distribution is 1 */
+    for(size b = 0; b < nbins; ++b)
+    {
+        densities[b] = wgts[b].sum / total_weight;
+    }
+
+    return (BayLaMarginalDist) { .nbins = nbins, .xs = xs, .densities = densities };
+}
+
+API void 
+bayla_marginal_dist_save_csv(BayLaMarginalDist mdist, char const *fname)
+{
+    FILE *f = fopen(fname, "wb");
+
+    for(size b = 0; b < mdist.nbins; ++b)
+    {
+        fprintf(f, "%.18e,%.18e\n", mdist.xs[b], mdist.densities[b]);
+    }
+
+    fclose(f);
+}
+
+typedef struct
+{
+    f64 prob;
+    f64 x;
+} BayLaInternalCISortRecord;
+
+API BayLaCredibleInterval 
+bayla_marginal_dist_calculate_ci(BayLaMarginalDist mdist, f64 ci_pct, MagAllocator scratch)
+{
+    Assert(ci_pct > 0.0 && ci_pct <= 1.0);
+
+    size const nbins = mdist.nbins;
+    BayLaInternalCISortRecord *recs = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
     BayLaInternalCISortRecord *sort_scratch = eco_arena_nmalloc(&scratch, nbins, BayLaInternalCISortRecord);
+
+    for(size b = 0; b < nbins; ++b)
+    {
+        recs[b].prob = mdist.densities[b];
+        recs[b].x = mdist.xs[b];
+    }
+
     pak_radix_sort(
-            recs,                                      /* The buffer to sort.                                   */
-            nbins,                                     /* The number of items in the buffer.                    */
-            offsetof(BayLaInternalCISortRecord, prob) + offsetof(ElkKahanAccumulator, sum),
-                                                       /* Offset into the object for the item we're sorting by. */
-            sizeof(*recs),                             /* The stride, or how large a single row is.             */
-            sort_scratch,                              /* Scratch memory for doing the sort.                    */
-            PAK_RADIX_SORT_F64,                        /* Sorting F64s.                                         */
-            PAK_SORT_DESCENDING);                      /* Sort in descending order.                             */
+            recs,                                       /* The buffer to sort.                                   */
+            nbins,                                      /* The number of items in the buffer.                    */
+            offsetof(BayLaInternalCISortRecord, prob),  /* Offset into the object for the item we're sorting by. */
+            sizeof(*recs),                              /* The stride, or how large a single row is.             */
+            sort_scratch,                               /* Scratch memory for doing the sort.                    */
+            PAK_RADIX_SORT_F64,                         /* Sorting F64s.                                         */
+            PAK_SORT_DESCENDING);                       /* Sort in descending order.                             */
 
     BayLaCredibleInterval ci = {.low = DBL_MAX, .high = -DBL_MAX };
     ElkKahanAccumulator weight = {0};
-    size bin = -1;
-    while(weight.sum < ci_pct * total_weight && bin < nbins - 1)
+    size bin = 0;
+    while(weight.sum < ci_pct && bin < nbins)
     {
-        ++bin;
         BayLaInternalCISortRecord rec = recs[bin];
-        weight = elk_kahan_accumulator_add(elk_kahan_accumulator_add(weight, rec.wgt.sum), rec.wgt.err);
+        weight = elk_kahan_accumulator_add(weight, rec.prob);
         ci.low = rec.x < ci.low ? rec.x : ci.low;
         ci.high = rec.x > ci.high ? rec.x : ci.high;
+        ++bin;
     }
 
     if(ci.high < ci.low) { ci.high = ci.low = NAN; }

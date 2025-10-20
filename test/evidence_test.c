@@ -1512,6 +1512,9 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scratch2
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "log_model.csv", scratch1);
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "log_model_marginal_sigma.csv");
 }
 
 static inline void
@@ -1532,6 +1535,12 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scr
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "constant_model.csv", scratch1);
+
+    BayLaMarginalDist marg_v0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_v0, "constant_model_marginal_v0.csv");
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 1, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "constant_model_marginal_sigma.csv");
 }
 
 static inline void
@@ -1552,6 +1561,15 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scrat
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "linear_model.csv", scratch1);
+
+    BayLaMarginalDist marg_v0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_v0, "linear_model_marginal_v0.csv");
+
+    BayLaMarginalDist marg_b = bayla_samples_marginal_dist(&samples, 1, alloc);
+    bayla_marginal_dist_save_csv(marg_b, "linear_model_marginal_b.csv");
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 2, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "linear_model_marginal_sigma.csv");
 }
 
 static inline void
@@ -1572,6 +1590,18 @@ test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "second_order_model.csv", scratch1);
+
+    BayLaMarginalDist marg_v0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_v0, "second_order_model_marginal_v0.csv");
+
+    BayLaMarginalDist marg_b = bayla_samples_marginal_dist(&samples, 1, alloc);
+    bayla_marginal_dist_save_csv(marg_b, "second_order_model_marginal_b.csv");
+
+    BayLaMarginalDist marg_c = bayla_samples_marginal_dist(&samples, 2, alloc);
+    bayla_marginal_dist_save_csv(marg_c, "second_order_model_marginal_c.csv");
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 3, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "second_order_model_marginal_sigma.csv");
 }
 
 static inline void
@@ -1592,6 +1622,21 @@ test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "third_order_model.csv", scratch1);
+
+    BayLaMarginalDist marg_v0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_v0, "third_order_model_marginal_v0.csv");
+
+    BayLaMarginalDist marg_b = bayla_samples_marginal_dist(&samples, 1, alloc);
+    bayla_marginal_dist_save_csv(marg_b, "third_order_model_marginal_b.csv");
+
+    BayLaMarginalDist marg_c = bayla_samples_marginal_dist(&samples, 2, alloc);
+    bayla_marginal_dist_save_csv(marg_c, "third_order_model_marginal_c.csv");
+
+    BayLaMarginalDist marg_d = bayla_samples_marginal_dist(&samples, 3, alloc);
+    bayla_marginal_dist_save_csv(marg_d, "third_order_model_marginal_d.csv");
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 4, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "third_order_model_marginal_sigma.csv");
 }
 
 static inline void
@@ -1612,6 +1657,24 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "fourth_order_model.csv", scratch1);
+
+    BayLaMarginalDist marg_v0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_v0, "fourth_order_model_marginal_v0.csv");
+
+    BayLaMarginalDist marg_b = bayla_samples_marginal_dist(&samples, 1, alloc);
+    bayla_marginal_dist_save_csv(marg_b, "fourth_order_model_marginal_b.csv");
+
+    BayLaMarginalDist marg_c = bayla_samples_marginal_dist(&samples, 2, alloc);
+    bayla_marginal_dist_save_csv(marg_c, "fourth_order_model_marginal_c.csv");
+
+    BayLaMarginalDist marg_d = bayla_samples_marginal_dist(&samples, 3, alloc);
+    bayla_marginal_dist_save_csv(marg_d, "fourth_order_model_marginal_d.csv");
+
+    BayLaMarginalDist marg_e = bayla_samples_marginal_dist(&samples, 4, alloc);
+    bayla_marginal_dist_save_csv(marg_e, "fourth_order_model_marginal_e.csv");
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 5, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "fourth_order_model_marginal_sigma.csv");
 }
 
 static inline void
@@ -1632,6 +1695,27 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "fifth_order_model.csv", scratch1);
+
+    BayLaMarginalDist marg_v0 = bayla_samples_marginal_dist(&samples, 0, alloc);
+    bayla_marginal_dist_save_csv(marg_v0, "fifth_order_model_marginal_v0.csv");
+
+    BayLaMarginalDist marg_b = bayla_samples_marginal_dist(&samples, 1, alloc);
+    bayla_marginal_dist_save_csv(marg_b, "fifth_order_model_marginal_b.csv");
+
+    BayLaMarginalDist marg_c = bayla_samples_marginal_dist(&samples, 2, alloc);
+    bayla_marginal_dist_save_csv(marg_c, "fifth_order_model_marginal_c.csv");
+
+    BayLaMarginalDist marg_d = bayla_samples_marginal_dist(&samples, 3, alloc);
+    bayla_marginal_dist_save_csv(marg_d, "fifth_order_model_marginal_d.csv");
+
+    BayLaMarginalDist marg_e = bayla_samples_marginal_dist(&samples, 4, alloc);
+    bayla_marginal_dist_save_csv(marg_e, "fifth_order_model_marginal_e.csv");
+
+    BayLaMarginalDist marg_f = bayla_samples_marginal_dist(&samples, 5, alloc);
+    bayla_marginal_dist_save_csv(marg_f, "fifth_order_model_marginal_f.csv");
+
+    BayLaMarginalDist marg_sigma = bayla_samples_marginal_dist(&samples, 6, alloc);
+    bayla_marginal_dist_save_csv(marg_sigma, "fifth_order_model_marginal_sigma.csv");
 }
 
 /*---------------------------------------------------   All Tests    -----------------------------------------------------*/
