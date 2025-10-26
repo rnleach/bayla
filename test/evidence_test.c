@@ -4,7 +4,7 @@ static inline f64
 natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 {
     /* This is a 3rd order polynomial approximation to ln around the point x0 */
-    f64 d = x - x0;
+    f64 const d = x - x0;
     return log(x0) + d / x0 - (d * d) / (2 * x0 * x0) + (d * d * d) / ( 3.0 * x0 * x0 * x0);
 }
 
@@ -57,7 +57,7 @@ static f64 const log_model_max_sigma = 15.0;
 static f64
 log_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 sigma = parms[0];
+    f64 const sigma = parms[0];
     if(sigma < log_model_min_sigma || sigma > log_model_max_sigma)
     {
         return -INFINITY;
@@ -70,16 +70,16 @@ static f64
 log_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 sigma = parms[0];
-    f64 y_sq_bar = data->y_sq_bar;
-    f64 y_logx_bar = data->y_logx_bar;
-    f64 logx_sq_bar = data->logx_sq_bar;
+    f64 const N = (f64)data->N;
+    f64 const sigma = parms[0];
+    f64 const y_sq_bar = data->y_sq_bar;
+    f64 const y_logx_bar = data->y_logx_bar;
+    f64 const logx_sq_bar = data->logx_sq_bar;
 
     data->ncalls++;
 
-    f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
-    f64 log_prob =  -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
+    f64 const Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
+    f64 const log_prob =  -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
 
     return log_prob;
 }
@@ -90,12 +90,12 @@ log_model_max_a_posteriori(void *user_data, size num_params, f64 *params_out)
     Assert(num_params == 1);
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 y_sq_bar = data->y_sq_bar;
-    f64 y_logx_bar = data->y_logx_bar;
-    f64 logx_sq_bar = data->logx_sq_bar;
+    f64 const N = (f64)data->N;
+    f64 const y_sq_bar = data->y_sq_bar;
+    f64 const y_logx_bar = data->y_logx_bar;
+    f64 const logx_sq_bar = data->logx_sq_bar;
 
-    f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
+    f64 const Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
     params_out[0] = sqrt(N * Q / (N + 1.0));
 
     for(size i = 0; i < num_params; ++i)
@@ -110,17 +110,17 @@ log_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_posterio
     Assert(num_params == 1);
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 sigma = max_a_posteriori_params[0];
-    f64 y_sq_bar = data->y_sq_bar;
-    f64 y_logx_bar = data->y_logx_bar;
-    f64 logx_sq_bar = data->logx_sq_bar;
+    f64 const N = (f64)data->N;
+    f64 const sigma = max_a_posteriori_params[0];
+    f64 const y_sq_bar = data->y_sq_bar;
+    f64 const y_logx_bar = data->y_logx_bar;
+    f64 const logx_sq_bar = data->logx_sq_bar;
 
-    f64 Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
+    f64 const Q = logx_sq_bar - 2.0 * y_logx_bar + y_sq_bar;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(1, alloc);
-    f64 sigma2 = sigma * sigma;
-    f64 sigma4 = sigma2 * sigma2;
+    f64 const sigma2 = sigma * sigma;
+    f64 const sigma4 = sigma2 * sigma2;
     hess.data[0] = (N + 1) / sigma2 - 3.0 * N * Q / sigma4;
 
     Assert(hess.data[0] < 0.0);
@@ -143,19 +143,19 @@ BayLaModel log_model =
 
 /*--------------------------------------------------- Constant Model -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a standard deviation. */
-f64 constant_model_min_parms[2] = {-6.0, 1.0e-5 };
-f64 constant_model_max_parms[2] = { 6.0, 15.0 };
+f64 const constant_model_min_parms[2] = {-6.0, 1.0e-5 };
+f64 const constant_model_max_parms[2] = { 6.0, 15.0 };
 
 static f64 
 constant_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 v0 = parms[0];
-    f64 v0_min = constant_model_min_parms[0];
-    f64 v0_max = constant_model_max_parms[0];
+    f64 const v0 = parms[0];
+    f64 const v0_min = constant_model_min_parms[0];
+    f64 const v0_max = constant_model_max_parms[0];
 
-    f64 sigma = parms[1];
-    f64 sigma_min = constant_model_min_parms[1];
-    f64 sigma_max = constant_model_max_parms[1];
+    f64 const sigma = parms[1];
+    f64 const sigma_min = constant_model_min_parms[1];
+    f64 const sigma_max = constant_model_max_parms[1];
 
     if(sigma < sigma_min || sigma > sigma_max || v0 < v0_min || v0 > v0_max)
     {
@@ -168,13 +168,13 @@ constant_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 static f64 
 constant_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 v0 = parms[0];
-    f64 sigma = parms[1];
+    f64 const v0 = parms[0];
+    f64 const sigma = parms[1];
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const N = (f64)data->N;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
     data->ncalls++;
 
@@ -190,9 +190,9 @@ constant_model_max_a_posteriori(void *user_data, size num_params, f64 *params_ou
     Assert(num_params == 2);
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const N = (f64)data->N;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
     params_out[0] = y_bar;
     params_out[1] = sqrt((N / (N + 1.0)) * (y_sq_bar - y_bar * y_bar));
@@ -208,20 +208,20 @@ constant_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_pos
 {
     Assert(num_params == 2);
 
-    f64 v0 = max_a_posteriori_params[0];
-    f64 sigma = max_a_posteriori_params[1];
+    f64 const v0 = max_a_posteriori_params[0];
+    f64 const sigma = max_a_posteriori_params[1];
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const N = (f64)data->N;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
-    f64 Q = v0 * v0 - 2.0 * v0 * y_bar + y_sq_bar;
+    f64 const Q = v0 * v0 - 2.0 * v0 * y_bar + y_sq_bar;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(2, alloc);
 
-    f64 sigma2 = sigma * sigma;
-    f64 sigma4 = sigma2 * sigma2;
+    f64 const sigma2 = sigma * sigma;
+    f64 const sigma4 = sigma2 * sigma2;
 
     hess.data[MATRIX_IDX(0, 0, 2)] = -N / sigma2;
     hess.data[MATRIX_IDX(0, 1, 2)] = hess.data[MATRIX_IDX(1, 0, 2)] = 0.0;
@@ -248,23 +248,23 @@ BayLaModel constant_model =
 
 /*---------------------------------------------------  Linear Model  -----------------------------------------------------*/
 /* parameter 0 is a constant value, parameter 1 is a linear coefficent, parameter 2 is a standard deviation. */
-f64 linear_model_min_parms[3] = {-6.0, -6.0, 1.0e-5 };
-f64 linear_model_max_parms[3] = {+6.0, +6.0, 15.0 };
+f64 const linear_model_min_parms[3] = {-6.0, -6.0, 1.0e-5 };
+f64 const linear_model_max_parms[3] = {+6.0, +6.0, 15.0 };
 
 static f64 
 linear_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 v0 = parms[0];
-    f64 v0_min = linear_model_min_parms[0];
-    f64 v0_max = linear_model_max_parms[0];
+    f64 const v0 = parms[0];
+    f64 const v0_min = linear_model_min_parms[0];
+    f64 const v0_max = linear_model_max_parms[0];
 
-    f64 b = parms[1];
-    f64 b_min = linear_model_min_parms[1];
-    f64 b_max = linear_model_max_parms[1];
+    f64 const b = parms[1];
+    f64 const b_min = linear_model_min_parms[1];
+    f64 const b_max = linear_model_max_parms[1];
 
-    f64 sigma = parms[2];
-    f64 sigma_min = linear_model_min_parms[2];
-    f64 sigma_max = linear_model_max_parms[2];
+    f64 const sigma = parms[2];
+    f64 const sigma_min = linear_model_min_parms[2];
+    f64 const sigma_max = linear_model_max_parms[2];
 
     if(sigma < sigma_min || sigma > sigma_max || v0 < v0_min || v0 > v0_max || b < b_min || b > b_max)
     {
@@ -277,25 +277,25 @@ linear_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 static f64 
 linear_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 v0 = parms[0];
-    f64 b = parms[1];
-    f64 sigma = parms[2];
+    f64 const v0 = parms[0];
+    f64 const b = parms[1];
+    f64 const sigma = parms[2];
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
+    f64 const N = (f64)data->N;
 
-    f64 x_bar = data->x_bar;
-    f64 x_sq_bar = data->x_sq_bar;
+    f64 const x_bar = data->x_bar;
+    f64 const x_sq_bar = data->x_sq_bar;
 
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
-    f64 xy_bar = data->xy_bar;
+    f64 const xy_bar = data->xy_bar;
 
     data->ncalls++;
     
-    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
-    f64 log_prob = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
+    f64 const Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+    f64 const log_prob = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
 
     return log_prob;
 }
@@ -310,15 +310,15 @@ linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_out)
     MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
+    f64 const N = (f64)data->N;
 
-    f64 x_bar = data->x_bar;
-    f64 x_sq_bar = data->x_sq_bar;
+    f64 const x_bar = data->x_bar;
+    f64 const x_sq_bar = data->x_sq_bar;
 
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
-    f64 xy_bar = data->xy_bar;
+    f64 const xy_bar = data->xy_bar;
 
     f64 m_data[4] = 
         {
@@ -332,10 +332,10 @@ linear_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_out)
     bayla_square_matrix_solve(m, input, scratch);
     memcpy(parms_out, input, sizeof(f64) * 2);
 
-    f64 v0 = parms_out[0];
-    f64 b = parms_out[1];
+    f64 const v0 = parms_out[0];
+    f64 const b = parms_out[1];
 
-    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+    f64 const Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
     parms_out[2] = sqrt(N / (N + 1.0) * Q);
 
     for(size i = 0; i < num_parms; ++i)
@@ -1030,39 +1030,39 @@ BayLaModel fourth_order_model =
 /*-----------------------------------------------  5th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, parm 5 is quintic,
  * param 6 is a standard deviation. */
-f64 fifth_order_min_parms[7] = {-6.0, -6.0, -6.0, -6.0, -6.0, -6.0, 1.0e-5 };
-f64 fifth_order_max_parms[7] = {+6.0, +6.0, +6.0, +6.0, +6.0, +6.0, 15.0 };
+f64 const fifth_order_min_parms[7] = {-6.0, -6.0, -6.0, -6.0, -6.0, -6.0, 1.0e-5 };
+f64 const fifth_order_max_parms[7] = {+6.0, +6.0, +6.0, +6.0, +6.0, +6.0, 15.0 };
 
 static f64 
 fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 v0 = parms[0];
-    f64 v0_min = fifth_order_min_parms[0];
-    f64 v0_max = fifth_order_max_parms[0];
+    f64 const v0 = parms[0];
+    f64 const v0_min = fifth_order_min_parms[0];
+    f64 const v0_max = fifth_order_max_parms[0];
 
-    f64 b = parms[1];
-    f64 b_min = fifth_order_min_parms[1];
-    f64 b_max = fifth_order_max_parms[1];
+    f64 const b = parms[1];
+    f64 const b_min = fifth_order_min_parms[1];
+    f64 const b_max = fifth_order_max_parms[1];
 
-    f64 c = parms[2];
-    f64 c_min = fifth_order_min_parms[2];
-    f64 c_max = fifth_order_max_parms[2];
+    f64 const c = parms[2];
+    f64 const c_min = fifth_order_min_parms[2];
+    f64 const c_max = fifth_order_max_parms[2];
 
-    f64 d = parms[3];
-    f64 d_min = fifth_order_min_parms[3];
-    f64 d_max = fifth_order_max_parms[3];
+    f64 const d = parms[3];
+    f64 const d_min = fifth_order_min_parms[3];
+    f64 const d_max = fifth_order_max_parms[3];
     
-    f64 e = parms[4];
-    f64 e_min = fifth_order_min_parms[4];
-    f64 e_max = fifth_order_max_parms[4];
+    f64 const e = parms[4];
+    f64 const e_min = fifth_order_min_parms[4];
+    f64 const e_max = fifth_order_max_parms[4];
     
-    f64 f = parms[5];
-    f64 f_min = fifth_order_min_parms[5];
-    f64 f_max = fifth_order_max_parms[5];
+    f64 const f = parms[5];
+    f64 const f_min = fifth_order_min_parms[5];
+    f64 const f_max = fifth_order_max_parms[5];
     
-    f64 sigma = parms[6];
-    f64 sigma_min = fifth_order_min_parms[6];
-    f64 sigma_max = fifth_order_max_parms[6];
+    f64 const sigma = parms[6];
+    f64 const sigma_min = fifth_order_min_parms[6];
+    f64 const sigma_max = fifth_order_max_parms[6];
     
     if(
             sigma < sigma_min || sigma > sigma_max 
@@ -1077,45 +1077,45 @@ fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
         return -INFINITY;
     }
 
-    f64 zc = (v0_max - v0_min) * (b_max - b_min) * (c_max - c_min) * (d_max - d_min) * (e_max - e_min) * (f_max - f_min) * log(sigma_max / sigma_min);
+    f64 const zc = (v0_max - v0_min) * (b_max - b_min) * (c_max - c_min) * (d_max - d_min) * (e_max - e_min) * (f_max - f_min) * log(sigma_max / sigma_min);
     return -log(zc * sigma);
 }
 
 static f64 
 fifth_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
-    f64 v0 = parms[0];
-    f64 b = parms[1];
-    f64 c = parms[2];
-    f64 d = parms[3];
-    f64 e = parms[4];
-    f64 f = parms[5];
-    f64 sigma = parms[6];
+    f64 const v0 = parms[0];
+    f64 const b = parms[1];
+    f64 const c = parms[2];
+    f64 const d = parms[3];
+    f64 const e = parms[4];
+    f64 const f = parms[5];
+    f64 const sigma = parms[6];
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
+    f64 const N = (f64)data->N;
 
-    f64 x_bar = data->x_bar;
-    f64 x_sq_bar = data->x_sq_bar;
-    f64 x3_bar = data->x3_bar;
-    f64 x4_bar = data->x4_bar;
-    f64 x5_bar = data->x5_bar;
-    f64 x6_bar = data->x6_bar;
-    f64 x7_bar = data->x7_bar;
-    f64 x8_bar = data->x8_bar;
-    f64 x9_bar = data->x9_bar;
-    f64 x10_bar = data->x10_bar;
+    f64 const x_bar = data->x_bar;
+    f64 const x_sq_bar = data->x_sq_bar;
+    f64 const x3_bar = data->x3_bar;
+    f64 const x4_bar = data->x4_bar;
+    f64 const x5_bar = data->x5_bar;
+    f64 const x6_bar = data->x6_bar;
+    f64 const x7_bar = data->x7_bar;
+    f64 const x8_bar = data->x8_bar;
+    f64 const x9_bar = data->x9_bar;
+    f64 const x10_bar = data->x10_bar;
 
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
-    f64 xy_bar = data->xy_bar;
-    f64 y_x2_bar = data->y_x2_bar;
-    f64 y_x3_bar = data->y_x3_bar;
-    f64 y_x4_bar = data->y_x4_bar;
-    f64 y_x5_bar = data->y_x5_bar;
+    f64 const xy_bar = data->xy_bar;
+    f64 const y_x2_bar = data->y_x2_bar;
+    f64 const y_x3_bar = data->y_x3_bar;
+    f64 const y_x4_bar = data->y_x4_bar;
+    f64 const y_x5_bar = data->y_x5_bar;
 
-    f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
+    f64 const Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
             2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
@@ -1138,26 +1138,26 @@ fifth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_o
     MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
-    f64 x_bar = data->x_bar;
-    f64 x_sq_bar = data->x_sq_bar;
-    f64 x3_bar = data->x3_bar;
-    f64 x4_bar = data->x4_bar;
-    f64 x5_bar = data->x5_bar;
-    f64 x6_bar = data->x6_bar;
-    f64 x7_bar = data->x7_bar;
-    f64 x8_bar = data->x8_bar;
-    f64 x9_bar = data->x9_bar;
-    f64 x10_bar = data->x10_bar;
+    f64 const N = (f64)data->N;
+    f64 const x_bar = data->x_bar;
+    f64 const x_sq_bar = data->x_sq_bar;
+    f64 const x3_bar = data->x3_bar;
+    f64 const x4_bar = data->x4_bar;
+    f64 const x5_bar = data->x5_bar;
+    f64 const x6_bar = data->x6_bar;
+    f64 const x7_bar = data->x7_bar;
+    f64 const x8_bar = data->x8_bar;
+    f64 const x9_bar = data->x9_bar;
+    f64 const x10_bar = data->x10_bar;
 
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
-    f64 xy_bar = data->xy_bar;
-    f64 y_x2_bar = data->y_x2_bar;
-    f64 y_x3_bar = data->y_x3_bar;
-    f64 y_x4_bar = data->y_x4_bar;
-    f64 y_x5_bar = data->y_x5_bar;
+    f64 const xy_bar = data->xy_bar;
+    f64 const y_x2_bar = data->y_x2_bar;
+    f64 const y_x3_bar = data->y_x3_bar;
+    f64 const y_x4_bar = data->y_x4_bar;
+    f64 const y_x5_bar = data->y_x5_bar;
 
     f64 m_data[36] = 
         {
@@ -1175,14 +1175,14 @@ fifth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_o
     bayla_square_matrix_solve(m, input, scratch);
     memcpy(parms_out, input, sizeof(f64) * 6);
 
-    f64 v0 = parms_out[0];
-    f64 b = parms_out[1];
-    f64 c = parms_out[2];
-    f64 d = parms_out[3];
-    f64 e = parms_out[4];
-    f64 f = parms_out[5];
+    f64 const v0 = parms_out[0];
+    f64 const b = parms_out[1];
+    f64 const c = parms_out[2];
+    f64 const d = parms_out[3];
+    f64 const e = parms_out[4];
+    f64 const f = parms_out[5];
 
-    f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
+    f64 const Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
             2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
@@ -1203,38 +1203,38 @@ fifth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
 {
     Assert(num_parms == 7);
 
-    f64 v0 = max_a_posteriori_parms[0];
-    f64 b = max_a_posteriori_parms[1];
-    f64 c = max_a_posteriori_parms[2];
-    f64 d = max_a_posteriori_parms[3];
-    f64 e = max_a_posteriori_parms[4];
-    f64 f = max_a_posteriori_parms[5];
-    f64 sigma = max_a_posteriori_parms[6];
+    f64 const v0 = max_a_posteriori_parms[0];
+    f64 const b = max_a_posteriori_parms[1];
+    f64 const c = max_a_posteriori_parms[2];
+    f64 const d = max_a_posteriori_parms[3];
+    f64 const e = max_a_posteriori_parms[4];
+    f64 const f = max_a_posteriori_parms[5];
+    f64 const sigma = max_a_posteriori_parms[6];
 
     UserData *data = user_data;
-    f64 N = (f64)data->N;
+    f64 const N = (f64)data->N;
 
-    f64 x_bar = data->x_bar;
-    f64 x_sq_bar = data->x_sq_bar;
-    f64 x3_bar = data->x3_bar;
-    f64 x4_bar = data->x4_bar;
-    f64 x5_bar = data->x5_bar;
-    f64 x6_bar = data->x6_bar;
-    f64 x7_bar = data->x7_bar;
-    f64 x8_bar = data->x8_bar;
-    f64 x9_bar = data->x9_bar;
-    f64 x10_bar = data->x10_bar;
+    f64 const x_bar = data->x_bar;
+    f64 const x_sq_bar = data->x_sq_bar;
+    f64 const x3_bar = data->x3_bar;
+    f64 const x4_bar = data->x4_bar;
+    f64 const x5_bar = data->x5_bar;
+    f64 const x6_bar = data->x6_bar;
+    f64 const x7_bar = data->x7_bar;
+    f64 const x8_bar = data->x8_bar;
+    f64 const x9_bar = data->x9_bar;
+    f64 const x10_bar = data->x10_bar;
 
-    f64 y_bar = data->y_bar;
-    f64 y_sq_bar = data->y_sq_bar;
+    f64 const y_bar = data->y_bar;
+    f64 const y_sq_bar = data->y_sq_bar;
 
-    f64 xy_bar = data->xy_bar;
-    f64 y_x2_bar = data->y_x2_bar;
-    f64 y_x3_bar = data->y_x3_bar;
-    f64 y_x4_bar = data->y_x4_bar;
-    f64 y_x5_bar = data->y_x5_bar;
+    f64 const xy_bar = data->xy_bar;
+    f64 const y_x2_bar = data->y_x2_bar;
+    f64 const y_x3_bar = data->y_x3_bar;
+    f64 const y_x4_bar = data->y_x4_bar;
+    f64 const y_x5_bar = data->y_x5_bar;
 
-    f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
+    f64 const Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
             2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
@@ -1242,9 +1242,9 @@ fifth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
                    + e * f * x9_bar
                    - v0 * y_bar - b * xy_bar - c * y_x2_bar - d * y_x3_bar - e * y_x4_bar - f * y_x5_bar);
 
-    f64 sigma2 = sigma * sigma;
-    f64 sigma3 = sigma2 * sigma;
-    f64 sigma4 = sigma3 * sigma;
+    f64 const sigma2 = sigma * sigma;
+    f64 const sigma3 = sigma2 * sigma;
+    f64 const sigma4 = sigma3 * sigma;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(7, alloc);
 
