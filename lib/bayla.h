@@ -177,6 +177,7 @@ typedef struct
     size n_samples;
     size ndim;
     f64 neff;
+    f64 kld;
     BayLaLogValue z_evidence;
     f64 *rows;             /* n_samples x (ndim + 3) */
     b32 valid;
@@ -910,6 +911,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
             .n_samples = n_samples,
             .ndim = ndim,
             .neff = NAN,
+            .kld = NAN,
             .z_evidence = (BayLaLogValue){ .val = NAN},
             .rows = rows,
             .valid = true
@@ -942,6 +944,8 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
     BayLaLogValue *ws = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
     BayLaLogValue *w2s = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
 
+    ElkKahanAccumulator sum_log_w = {0};
+
     for(size s = 0; s < n_samples; ++s)
     {
         f64 *row = &rows[s * ncols];
@@ -965,6 +969,9 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
 
         ws[s] = bayla_log_value_create(row[widx]);
         w2s[s] = bayla_log_value_power(ws[s], 2.0);
+
+        f64 w = exp(row[widx]);
+        sum_log_w = elk_kahan_accumulator_add(sum_log_w, (w - 1) - row[widx]);
     }
 
     BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
@@ -974,6 +981,9 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
     /* w_acc^2 / w2_acc */
     samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(bayla_log_value_power(w_acc, 2), w2_acc));
     samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
+    
+    /* KL Divergence */
+    samples.kld = sum_log_w.sum / (f64)n_samples;
 
     return samples;
 }
@@ -1065,7 +1075,7 @@ bayla_samples_marginal_dist(BayLaSamples *samples, size parm_idx, MagAllocator *
     size const ndim = samples->ndim;
     size const ncols = ndim + 3;
     size const widx = ndim + 2;
-    size const nbins = 100;
+    size const nbins = 50;
 
     f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
     f64 const *const rows = samples->rows;
@@ -1463,6 +1473,20 @@ bayla_find_minima(BayLaModel const *model, size n_samples, u64 seed, MagAllocato
 API BayLaSamples 
 bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2)
 {
+
+#if 0
+    FILE *f = fopen("ranges.csv", "ab");
+    for(f64 log_sf = -30.0; log_sf <= 5.0; log_sf += 0.05)
+    {
+        MagAllocator temp = scratch1;
+
+        BayLaSamples samples = bayla_importance_sample_gauss_approx(model, exp(log_sf), n_samples, seed, &temp, scratch2);
+        fprintf(f, "%e,%e,%e\n", exp(log_sf), samples.neff, samples.kld);
+    }
+    fprintf(f, "\n\n");
+    fclose(f);
+#endif
+
     BayLaMinimizationPair min_result = bayla_find_minima(model, n_samples, seed, scratch1, scratch2);
     return bayla_importance_sample_gauss_approx(model, min_result.xmin, n_samples, seed, alloc, scratch1);
 }
