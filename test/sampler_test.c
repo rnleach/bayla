@@ -98,14 +98,14 @@ test_simple_model(void)
             .user_data = &args
         };
 
-    BayLaSamples samples = bayla_importance_sample_gauss_approx(&model, 1.0, 10000, 13, alloc, scratch);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx(&model, 1.0, 100000, 13, alloc, scratch);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    printf("ndim = %2td n_samples = %4td neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
+    printf("ndim = %2td n_samples = %4td neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])",
             samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     BayLaLogValue p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.95, scratch);
-    printf("p_thresh = %lf\n", bayla_log_value_map_out_of_log_domain(p_thresh));
+    printf(" p_thresh = %9.2e\n", bayla_log_value_map_out_of_log_domain(p_thresh));
 
     BayLaCredibleInterval x0_ci = bayla_samples_calculate_ci(&samples, 0.95, 0, scratch);
     BayLaCredibleInterval x1_ci = bayla_samples_calculate_ci(&samples, 0.95, 1, scratch);
@@ -113,11 +113,15 @@ test_simple_model(void)
     BayLaErrorValue x0_exp = bayla_samples_calculate_expectation(&samples, get_param0, NULL);
     BayLaErrorValue x1_exp = bayla_samples_calculate_expectation(&samples, get_param1, NULL);
 
-    printf("\n   Credible Intervals - x0: [ %lf -> %lf -> %lf]  x1: [ %lf -> %lf -> %lf ]\n",
+    printf("   Credible Intervals - x0: [ %9.6lf -> %9.6lf -> %9.6lf]        x1: [ %9.6lf -> %9.6lf -> %9.6lf ]\n",
             x0_ci.low, x0_exp.val, x0_ci.high, x1_ci.low, x1_exp.val, x1_ci.high);
-    printf("Expectation (w/error) - x0: %lf ± %lf (%0.2lf%%) x1: %lf ± %lf (%0.2lf%%)\n",
+    printf("Expectation (w/error) - x0:                %9.6lf ±  %9.6lf (%0.2lf%%) x1:                %9.6lf ±  %9.6lf (%0.2lf%%)\n",
             x0_exp.val, 3.0 * x0_exp.std, 100.0 * fabs(3.0 * x0_exp.std / x0_exp.val),
             x1_exp.val, 3.0 * x1_exp.std, 100.0 * fabs(3.0 * x1_exp.std / x1_exp.val));
+    printf("           True Value - x0:                %9.6lf                      x1:                %9.6lf\n", true_mean[0], true_mean[1]);
+    f64 x0_zscore = (true_mean[0] - x0_exp.val) / x0_exp.std;
+    f64 x1_zscore = (true_mean[1] - x1_exp.val) / x1_exp.std;
+    printf("   True Value Z-score - x0:                %9.6lf                      x1:                %9.6lf\n", x0_zscore, x1_zscore);
 
     bayla_samples_save_csv(&samples, p_thresh, "simple_model.csv");
 
