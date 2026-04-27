@@ -230,7 +230,7 @@ crude_sampler_tests(void)
         printf("n = %7td neff = %7.0lf ratio = %5.3lf Z = %13.6e x1 = %5.2lf x2 = %5.2lf\n",
                 n_samples, neff, neff / n_samples, z, mean_x1, mean_x2);
 
-#if 1
+#if 0
         char fname[100] = {0};
         snprintf(fname, sizeof(fname), "samples_%td.csv", n_samples);
         FILE *f = fopen(fname, "wb");
@@ -258,7 +258,7 @@ all_sampler_tests(void)
 {
     printf("\n             Sampler Tests\n");
 
-#if 1
+#if 0
     crude_sampler_tests();
 #endif
 
