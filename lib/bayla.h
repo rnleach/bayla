@@ -178,7 +178,7 @@ typedef struct
     size ndim;
     f64 neff;
     BayLaLogValue z_evidence;
-    f64 *rows;             /* n_samples x (ndim + 3) */
+    f64 *rows;             /* n_samples x (ndim + 3), last 3 columns are in log domain, wrap them BayLaLogValue to use */
     b32 valid;
 } BayLaSamples;
 
