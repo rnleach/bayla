@@ -1188,13 +1188,13 @@ bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f
     for(size r = 0; r < n_samples; ++r)
     {
         f64 const *row = &rows[r * ncols];
-        f64 w = row[widx];
-        f64 df = func(ndim, row, ud) * w - mean;
+        f64 w = exp(row[widx]);
+        f64 df = func(ndim, row, ud) - mean;
 
-        v_acc = elk_kahan_accumulator_add(v_acc, df * df);
+        v_acc = elk_kahan_accumulator_add(v_acc, df * df * w);
     }
 
-    f64 std = sqrt(v_acc.sum / (n_samples * n_samples));
+    f64 std = sqrt(v_acc.sum / total_weight / samples->neff);
 
     return (BayLaErrorValue){ .val = mean, .std = std};
 }
