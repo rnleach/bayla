@@ -1639,7 +1639,7 @@ test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  2nd Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&second_order_model, 10000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&second_order_model, 100000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -1659,7 +1659,7 @@ test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  3rd Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&third_order_model, 10000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&third_order_model, 100000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -1679,7 +1679,7 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  4th Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fourth_order_model, 100000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fourth_order_model, 500000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -1699,7 +1699,7 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator sc
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  5th Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fifth_order_model, 200000, 13, alloc, scratch1, scratch2);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_optimize(&fifth_order_model, 1000000, 13, alloc, scratch1, scratch2);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);

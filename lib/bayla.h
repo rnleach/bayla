@@ -933,13 +933,13 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
     Assert(prop_dist.valid && workspace);
 
     BayLaLogValue *ws = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
-    BayLaLogValue *w2s = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
 
     for(size s = 0; s < n_samples; ++s)
     {
         f64 *row = &rows[s * ncols];
         BayLaLogValue ld_qi = bayla_mv_norm_dist_random_deviate(&prop_dist, state, row, workspace);
         BayLaLogValue ld_pi = bayla_model_evaluate(model, row);
+        BayLaLogValue ld_wi = bayla_log_value_divide(ld_pi, ld_qi);
 
         if(
                    bayla_log_value_is_nan(ld_qi)
@@ -954,19 +954,27 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
 
         row[pidx] = ld_pi.val;
         row[qidx] = ld_qi.val;
-        row[widx] = row[pidx] - row[qidx];
+        row[widx] = ld_wi.val;
 
-        ws[s] = bayla_log_value_create(row[widx]);
-        w2s[s] = bayla_log_value_power(ws[s], 2.0);
+        ws[s] = ld_wi;
     }
 
+    /* Calculate evidence */
     BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    BayLaLogValue w2_acc = bayla_log_values_sum(n_samples, 0, 1, w2s);
     BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
-
-    /* w_acc^2 / w2_acc */
-    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(bayla_log_value_power(w_acc, 2), w2_acc));
     samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
+
+    /* Normalize weights and square them for calculating effective sample size */
+    for(size s = 0; s < n_samples; ++s)
+    {
+        ws[s] = bayla_log_value_divide(ws[s], w_acc);
+        ws[s] = bayla_log_value_power(ws[s], 2.0);
+    }
+
+    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
+    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+
+    if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
 
     return samples;
 }
