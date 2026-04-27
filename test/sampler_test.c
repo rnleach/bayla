@@ -66,7 +66,7 @@ get_param1(size ndim, f64 const *params, void *ud)
 static void
 test_simple_model(void)
 {
-    printf("             ...Simple Model Tests\n");
+    printf("\n             ...Simple Model Tests\n");
 
     MagAllocator alloc_ = mag_allocator_dyn_arena_create(ECO_MiB(2));
     MagAllocator *alloc = &alloc_;
@@ -100,12 +100,12 @@ test_simple_model(void)
 
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&model, 1.0, 10000, 13, alloc, scratch);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
-    printf("\nndim = %2td n_samples = %4td neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
+    printf("ndim = %2td n_samples = %4td neff = %4.0lf effective ratio = %4.2lf z_evidence = %g ± %g [%4.2lf%%])\n",
             samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
-    f64 p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.95, scratch);
-    printf("p_thresh = %lf\n", p_thresh);
+    BayLaLogValue p_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.95, scratch);
+    printf("p_thresh = %lf\n", bayla_log_value_map_out_of_log_domain(p_thresh));
 
     BayLaCredibleInterval x0_ci = bayla_samples_calculate_ci(&samples, 0.95, 0, scratch);
     BayLaCredibleInterval x1_ci = bayla_samples_calculate_ci(&samples, 0.95, 1, scratch);
@@ -132,7 +132,7 @@ test_simple_model(void)
 void
 crude_sampler_tests(void)
 {
-    printf("             ...Crude Tests\n");
+    printf("\n             ...Crude Tests\n");
 
     MagAllocator alloc_ = mag_allocator_dyn_arena_create(ECO_MiB(2));
     MagAllocator *alloc = &alloc_;
@@ -189,7 +189,7 @@ crude_sampler_tests(void)
             row[1] = params[1];
             row[2] = bayla_log_value_map_out_of_log_domain(ld_pi);
             row[3] = bayla_log_value_map_out_of_log_domain(ld_qi);
-            row[4] = row[2] / row[3];
+            row[4] = bayla_log_value_map_out_of_log_domain(bayla_log_value_divide(ld_pi, ld_qi));
 
             w_acc = elk_kahan_accumulator_add(w_acc, row[4]);
             w2_acc = elk_kahan_accumulator_add(w2_acc, row[4] * row[4]);
@@ -226,7 +226,7 @@ crude_sampler_tests(void)
         printf("n = %7td neff = %7.0lf ratio = %5.3lf Z = %13.6e x1 = %5.2lf x2 = %5.2lf\n",
                 n_samples, neff, neff / n_samples, z, mean_x1, mean_x2);
 
-#if 0
+#if 1
         char fname[100] = {0};
         snprintf(fname, sizeof(fname), "samples_%td.csv", n_samples);
         FILE *f = fopen(fname, "wb");
@@ -254,7 +254,7 @@ all_sampler_tests(void)
 {
     printf("\n             Sampler Tests\n");
 
-#if 0
+#if 1
     crude_sampler_tests();
 #endif
 

@@ -198,14 +198,14 @@ typedef struct
  * in the tails.
  */
 API BayLaSamples bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
-API void bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname);
-API f64 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
+API void bayla_samples_save_csv(BayLaSamples *samples, BayLaLogValue ci_p_thresh, char const *fname);
+API BayLaLogValue bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
 API BayLaCredibleInterval bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch);
 API BayLaErrorValue bayla_samples_estimate_evidence(BayLaSamples *samples);
 API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud);
 
-/* Since we can only know the Hessian to within a constant factor, this optomizes the scale factor to maximize the effective
+/* Since we can only know the Hessian to within a constant factor, this optimizes the scale factor to maximize the effective
  * sample size.
  */
 API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2);
@@ -972,7 +972,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, f64 sf, size n_sam
 }
 
 API void 
-bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname)
+bayla_samples_save_csv(BayLaSamples *samples, BayLaLogValue ci_p_thresh, char const *fname)
 {
     FILE *f = fopen(fname, "wb");
 
@@ -1005,7 +1005,7 @@ bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname
         {
             fprintf(f, "%.18e,", row[c]);
         }
-        fprintf(f, "%.18e,%.18e,%.18e,%d\n", row[pidx], row[qidx], row[widx], row[pidx] >= ci_p_thresh ? 1 : 0);
+        fprintf(f, "%.18e,%.18e,%.18e,%d\n", row[pidx], row[qidx], row[widx], row[pidx] >= ci_p_thresh.val ? 1 : 0);
     }
 
     fclose(f);
@@ -1013,7 +1013,7 @@ bayla_samples_save_csv(BayLaSamples *samples, f64 ci_p_thresh, char const *fname
     mag_static_arena_destroy(&scratch);
 }
 
-API f64 
+API BayLaLogValue 
 bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch)
 {
     Assert(ci_pct > 0.0 && ci_pct <= 1.0);
@@ -1045,11 +1045,11 @@ bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAlloca
         weight = elk_kahan_accumulator_add(weight, exp(row[widx]));
         if(weight.sum >= ci_pct * total_weight)
         {
-            return row[pidx];
+            return bayla_log_value_create(row[pidx]);
         }
     }
 
-    return NAN;
+    return bayla_log_value_create(NAN);
 }
 
 typedef struct
