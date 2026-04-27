@@ -1,7 +1,6 @@
 #ifndef _ELK_HEADER_
 #define _ELK_HEADER_
 
-/* TODO: Add an efficient (SIMD) line count function to ElkStr. */
 /* TODO: Parse more date formats (Specifically: 1 Jan, 2025    */
 
 /* Change some warning settings for MSVC. This code is well tested and we use some "tricks" for performance, and I don't
@@ -14,7 +13,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifndef __EMSCRIPTEN__
 #include <immintrin.h>
+#endif
 
 #ifndef __AVX2__
 #define __AVX2__ 0
@@ -22,6 +23,8 @@
 
 #if defined(_WIN64) || defined(_WIN32)
 #define __lzcnt32(a) __lzcnt(a)
+#define __builtin_popcount(a) __popcnt(a)
+#define __builtin_ctz(a) _tzcnt_u32(a)
 #endif
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -262,6 +265,8 @@ typedef struct
     size len;     /* the length of the string (not including a null terminator if it's there) */
 } ElkStr;
 
+ElkStr const elk_str_null = { 0 };
+
 typedef struct
 {
     ElkStr left;
@@ -276,6 +281,9 @@ static inline i32 elk_str_cmp(ElkStr left, ElkStr right);                  /* 0 
 static inline b32 elk_str_eq(ElkStr const left, ElkStr const right);       /* Faster than elk_str_cmp, checks length first */
 static inline b32 elk_str_null_terminated(ElkStr const str);               /* Can cause a segfault, good to use in Asserts */
 static inline ElkStrSplitPair elk_str_split_on_char(ElkStr str, char const split_char);
+static inline ElkStrSplitPair elk_str_split_on_substr(ElkStr str, ElkStr split_str);
+static inline ElkStrSplitPair elk_str_split_on_substr_nt(ElkStr str, char *nt_string);
+static inline i64 elk_str_line_count(ElkStr str);
 
 
 /* Parsing values from strings.
@@ -849,6 +857,195 @@ elk_str_split_on_char(ElkStr str, char const split_char)
     return (ElkStrSplitPair) { .left = left, .right = right};
 }
 
+static inline ElkStrSplitPair 
+elk_str_split_on_substr(ElkStr str, ElkStr split_str)
+{
+    /* No data to search or nothing to split on. */
+    if(!str.start || str.len ==0 || !split_str.start || split_str.len == 0)
+    {
+        return (ElkStrSplitPair) { .left = str, .right = elk_str_null };
+    }
+
+    /* Delegate to elk_str_split_on_char if split_str is only a single character. */
+    if(split_str.len == 1) { return elk_str_split_on_char(str, split_str.start[0]); }
+
+    /* Check to make sure we have AVX2 */
+    if(__AVX2__)
+    {
+        __m256i const first = _mm256_set1_epi8(split_str.start[0]);
+        char const second = (split_str.len >= 2) ? split_str.start[1] : 0;  /* dummy if len = 1 */
+
+        char const * const end = str.start + str.len - split_str.len + 1;
+        char * ptr = str.start;
+
+        /* Aligned prolog */
+        while((uptr)ptr % 32 != 0 && ptr < end)
+        {
+            if (
+                    *ptr == split_str.start[0]
+                    && (split_str.len < 2 || *(ptr + 1) == second)
+                    && memcmp(ptr, split_str.start, split_str.len) == 0
+               ) 
+            {
+                ElkStr left = { .start = str.start, .len = (size)(ptr - str.start) };
+                ElkStr right = { .start = ptr + split_str.len, .len = (size)(str.len - split_str.len - left.len) };
+                return (ElkStrSplitPair) { .left = left, .right = right };
+            }
+
+            ++ptr;
+        }
+
+        /* Main AVX2 loop */
+        while(ptr + 32 <= end)
+        {
+            __m256i const chunk = _mm256_load_si256((const __m256i*)ptr);
+            __m256i const eq    = _mm256_cmpeq_epi8(chunk, first);
+            int mask            = _mm256_movemask_epi8(eq);
+
+            while(mask != 0)
+            {
+                int bit = __builtin_ctz(mask);
+                mask &= mask - 1;               // clear lowest set bit
+
+                char *candidate = ptr + bit;
+
+                /* Early rejection with second byte (huge win if second byte uncommon) */
+                if (split_str.len >= 2 && candidate[1] != second) { continue; }
+
+                if (memcmp(candidate, split_str.start, split_str.len) == 0)
+                {
+                    ElkStr left = { .start = str.start, .len = (size)(candidate - str.start) };
+                    ElkStr right = { .start = candidate + split_str.len, .len = (size)(str.len - split_str.len - left.len) };
+                    return (ElkStrSplitPair) { .left = left, .right = right };
+                }
+            }
+            ptr += 32;
+        }
+
+        /* Scalar tail (usually tiny) */
+        while (ptr < end)
+        {
+            if (
+                    *ptr == split_str.start[0]
+                    && (split_str.len < 2 || *(ptr + 1) == second)
+                    && memcmp(ptr, split_str.start, split_str.len) == 0
+               ) 
+            {
+                ElkStr left = { .start = str.start, .len = (size)(ptr - str.start) };
+                ElkStr right = { .start = ptr + split_str.len, .len = (size)(str.len - split_str.len - left.len) };
+                return (ElkStrSplitPair) { .left = left, .right = right };
+            }
+
+            ++ptr;
+        }
+    }
+    else
+    {
+        char const first = split_str.start[0];
+        char const *last_possible = str.start + str.len - split_str.len;
+
+        for(char *p = str.start; p <=last_possible; ++p)
+        {
+            // Quick single-byte filter → big win when first char rarely matches
+            if (*p == first && memcmp(p, split_str.start, split_str.len) == 0)
+            {
+                ElkStr left = { .start = str.start, .len = (size)(p - str.start) };
+                ElkStr right = { .start = p + split_str.len, .len = (size)(str.len - split_str.len - left.len) };
+                return (ElkStrSplitPair) { .left = left, .right = right };
+            }
+        }
+    }
+
+    return (ElkStrSplitPair) { .left = str, .right = elk_str_null };
+}
+
+static inline 
+ElkStrSplitPair elk_str_split_on_substr_nt(ElkStr str, char *nt_string)
+{
+    ElkStr sub = elk_str_from_cstring(nt_string);
+    return elk_str_split_on_substr(str, sub);
+}
+
+#ifndef __EMSCRIPTEN__
+static inline i64 
+elk_str_line_count(ElkStr str)
+{
+    StopIf(!str.start || str.len <= 0, return 0);
+
+    i64 count = 1;
+
+    /* Check to make sure we have AVX. */
+    if(__AVX2__)
+    {
+        __m256i newline = _mm256_set1_epi8('\n');
+
+        char const *s = str.start;
+        uptr addr = (uptr)s;
+        usize offset = addr & 31;
+        usize num_to_align = 32 - offset;
+        usize length = str.len;
+        
+        /* Prefix */
+        if(num_to_align > 0 && num_to_align <= length)
+        {
+            for(usize c = 0; c < num_to_align; ++c)
+            {
+                if(s[c] == '\n') { count += 1; }
+            }
+            length -= num_to_align;
+            s += num_to_align;
+        }
+
+        /* Main body */
+        while (length >= 32) {
+            __m256i chunk = _mm256_load_si256((__m256i const *)s);
+
+            /* Compare for newlines and extract bitmask (bit i set if byte i == '\n') */
+            __m256i eq_nl = _mm256_cmpeq_epi8(chunk, newline);
+            u32 nl_mask = (u32)_mm256_movemask_epi8(eq_nl);
+
+            count += __builtin_popcount(nl_mask);
+
+            s += 32;
+            length -= 32;
+        }
+
+        /* Suffix */
+        if(length > 0)
+        {
+            for(usize c = 0; c < length; ++c)
+            {
+                if(s[c] == '\n') { count += 1; }
+            }
+        }
+    }
+    else
+    {
+        for(size c = 0; c < str.len; ++c)
+        {
+            if(str.start[c] == '\n') { count += 1; }
+        }
+    }
+
+    return count;
+}
+#else
+static inline i64 
+elk_str_line_count(ElkStr str)
+{
+    StopIf(!str.start || str.len <= 0, return 0);
+
+    i64 count = 1;
+    for(size c = 0; c < str.len; ++c)
+    {
+        if(str.start[c] == '\n') { count += 1; }
+    }
+
+    return count;
+}
+
+#endif
+
 _Static_assert(sizeof(size) == sizeof(uptr), "intptr_t and uintptr_t aren't the same size?!");
 
 static inline b32 
@@ -1224,6 +1421,7 @@ ERR_RETURN:
 }
 #pragma warning(default : 4723)
 
+#ifndef __EMSCRIPTEN__
 static inline b32
 elk_str_parse_datetime_long_format(ElkStr str, ElkTime *out)
 {
@@ -1293,6 +1491,34 @@ elk_str_parse_datetime_long_format(ElkStr str, ElkTime *out)
 
     return false;
 }
+
+#else
+
+static inline b32
+elk_str_parse_datetime_long_format(ElkStr str, ElkTime *out)
+{
+    i64 year = INT64_MIN;
+    i64 month = INT64_MIN;
+    i64 day = INT64_MIN;
+    i64 hour = INT64_MIN;
+    i64 minutes = INT64_MIN;
+    i64 seconds = INT64_MIN;
+
+    if(
+        elk_str_parse_i64(elk_str_substr(str,  0, 4), &year    ) && 
+        elk_str_parse_i64(elk_str_substr(str,  5, 2), &month   ) &&
+        elk_str_parse_i64(elk_str_substr(str,  8, 2), &day     ) &&
+        elk_str_parse_i64(elk_str_substr(str, 11, 2), &hour    ) &&
+        elk_str_parse_i64(elk_str_substr(str, 14, 2), &minutes ) &&
+        elk_str_parse_i64(elk_str_substr(str, 17, 2), &seconds ))
+    {
+        *out = elk_time_from_ymd_and_hms((i16)year, (i8)month, (i8)day, (i8)hour, (i8)minutes, (i8)seconds);
+        return true;
+    }
+
+    return false;
+}
+#endif
 
 static inline b32
 elk_str_parse_datetime_compact_doy(ElkStr str, ElkTime *out)
