@@ -9,7 +9,7 @@ natural_log_approximation_by_3rd_order_polynomial(f64 x, f64 x0)
 }
 
 /* Some data used by all models, this will be initialized in the test. */
-#define NUM_DATA_POINTS 105
+#define NUM_DATA_POINTS 100
 typedef struct
 {
     /* For keeping track of how many times a function is called. */
@@ -841,8 +841,8 @@ BayLaModel third_order_model =
 /*-----------------------------------------------  4th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, param 5 is a
  * standard deviation. */
-f64 fourth_order_min_parms[6] = {-6.0, -6.0, -6.0, -6.0, -6.0, 1.0e-5 };
-f64 fourth_order_max_parms[6] = {+6.0, +6.0, +6.0, +6.0, +6.0, 15.0 };
+f64 fourth_order_min_parms[6] = {-12.0, -12.0, -12.0, -12.0, -12.0, 1.0e-5 };
+f64 fourth_order_max_parms[6] = {+12.0, +12.0, +12.0, +12.0, +12.0, 15.0 };
 
 static f64 
 fourth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -1096,8 +1096,8 @@ BayLaModel fourth_order_model =
 /*-----------------------------------------------  5th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, parm 5 is quintic,
  * param 6 is a standard deviation. */
-f64 fifth_order_min_parms[7] = {-6.0, -6.0, -6.0, -6.0, -6.0, -6.0, 1.0e-5 };
-f64 fifth_order_max_parms[7] = {+6.0, +6.0, +6.0, +6.0, +6.0, +6.0, 15.0 };
+f64 fifth_order_min_parms[7] = {-24.0, -24.0, -24.0, -24.0, -24.0, -24.0, 1.0e-5 };
+f64 fifth_order_max_parms[7] = {+24.0, +24.0, +24.0, +24.0, +24.0, +24.0, 15.0 };
 
 static f64 
 fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -1556,12 +1556,12 @@ save_max_a_posteriori_models_gnuplot_script(void)
 
     fourth_order_model_max_a_posteriori(&fourth_order_user_data, fourth_order_model.n_parameters, params);
     fprintf(f, "%s,\\\n", pre);
-    fprintf(f, "     %e * x**4 + %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Third Order\"\n\n", 
+    fprintf(f, "     %e * x**4 + %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Fourth Order\"\n\n", 
             params[4], params[3], params[2], params[1], params[0]);
 
     fifth_order_model_max_a_posteriori(&fifth_order_user_data, fifth_order_model.n_parameters, params);
     fprintf(f, "%s,\\\n", pre);
-    fprintf(f, "     %e * x**5 + %e * x**4 + %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Third Order\"\n\n", 
+    fprintf(f, "     %e * x**5 + %e * x**4 + %e * x**3 + %e * x**2 + %e *x + %e lw 3 title \"Fifth Order\"\n\n", 
             params[5], params[4], params[3], params[2], params[1], params[0]);
 
     fprintf(f, "unset multiplot\nunset xrange\n\n");
