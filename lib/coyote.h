@@ -226,6 +226,8 @@ static inline b32 coy_condvar_wake(CoyCondVar *cv);
 static inline b32 coy_condvar_wake_all(CoyCondVar *cv);
 static inline void coy_condvar_destroy(CoyCondVar *cv); /* Must set valid member to false. */
 
+static inline i32 coy_cpu_count(void);
+
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                  Thread Safe Channel
  *---------------------------------------------------------------------------------------------------------------------------
@@ -297,7 +299,7 @@ static inline void coy_task_thread_destroy(CoyTaskThread *thread);
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                      Thread Pool
  *---------------------------------------------------------------------------------------------------------------------------
- * A pool of worker threads.
+ * A pool of worker threads that can take an arbitrary function and it's data (arguments) for each call.
  */
 
 typedef enum 
@@ -1979,6 +1981,14 @@ coy_condvar_destroy(CoyCondVar *cv)
     cv->valid = false;
 }
 
+static inline i32 
+coy_cpu_count(void)
+{
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+}
+
 static inline u32 
 coy_task_thread_func_internal(void *thread_params)
 {
@@ -2109,8 +2119,15 @@ coy_profile_read_os_timer(void)
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+static inline i32 
+coy_cpu_count(void)
+{
+    return sysconf(_SC_NPROCESSORS_ONLN);
+}
 
 static inline void 
 coy_profile_initialize_os_metrics(void)
@@ -2173,6 +2190,15 @@ coy_profile_read_os_page_fault_count(void)
 #include <sys/resource.h>
 #include <sys/syslimits.h>
 #include <unistd.h>
+
+static inline i32 
+coy_cpu_count(void)
+{
+    i32 count;
+    size_t len = sizeof(count);
+    sysctlbyname("hw.ncpu", &count, &len, NULL, 0);
+    return count;
+}
 
 static inline void 
 coy_profile_initialize_os_metrics(void)
