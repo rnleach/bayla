@@ -890,6 +890,8 @@ fourth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 static f64 
 fourth_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
+    Assert(num_parms == 6);
+
     f64 v0 = parms[0];
     f64 b = parms[1];
     f64 c = parms[2];
@@ -1150,6 +1152,8 @@ fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
 static f64 
 fifth_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
 {
+    Assert(num_parms == 7);
+
     f64 v0 = parms[0];
     f64 b = parms[1];
     f64 c = parms[2];
