@@ -1048,6 +1048,7 @@ typedef struct
     f64 *rows;
     BayLaLogValue *ws;
     size n_samples;
+    CoyBatchCompletion *bc;
 } BayLaGaussApproxSamplerInnerArgs;
 
 void
@@ -1090,6 +1091,8 @@ bayla_importance_sample_gauss_approx_par_inner(void *td)
         Assert(s < args->n_samples);
         ws[s] = ld_wi;
     }
+
+    coy_batch_completion_task_done(args->bc);
 }
 
 API BayLaSamples 
@@ -1136,12 +1139,15 @@ bayla_importance_sample_gauss_approx_par(BayLaModel const *model, f64 sf, size n
     size const n_threads = pool->nthreads;
     BayLaGaussApproxSamplerInnerArgs *inner_args = eco_arena_nmalloc(scratch, n_threads, BayLaGaussApproxSamplerInnerArgs);
     CoyFuture *futures = eco_arena_nmalloc(scratch, n_threads, CoyFuture);
+    CoyBatchCompletion bc = {0};
+    coy_batch_completion_init(&bc, n_threads);
 
     size const block_size = n_samples / n_threads;
     size const left_overs = n_samples % n_threads;
     size start_idx = 0;
     for(size t = 0; t < n_threads; ++t)
     {
+        inner_args[t].bc = &bc;
         inner_args[t].n_samples = n_samples;
         inner_args[t].model = model;
         inner_args[t].prop_dist = &prop_dist;
@@ -1164,17 +1170,8 @@ bayla_importance_sample_gauss_approx_par(BayLaModel const *model, f64 sf, size n
         start_idx = end_idx;
     }
 
-    /* Busy wait */
-    /* FIXME: Use a semaphore or something to count up and then back down, and then wait on the semaphore */
-    b32 all_tasks_done = false;
-    while(!all_tasks_done)
-    {
-        all_tasks_done = true;
-        for(size t = 0; t < n_threads; ++t)
-        {
-            all_tasks_done &= coy_future_is_complete(&futures[t]);
-        }
-    }
+    coy_batch_completion_wait(&bc);
+    coy_batch_completion_destroy(&bc);
 
     /* Calculate evidence */
     BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
