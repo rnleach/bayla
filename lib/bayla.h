@@ -1,6 +1,7 @@
 #ifndef _BAYLA_H_
 #define _BAYLA_H_
 
+#include <math.h>
 #include <float.h>
 
 #include "elk.h"
