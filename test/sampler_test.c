@@ -63,6 +63,18 @@ get_param1(size ndim, f64 const *params, void *ud)
     return params[1];
 }
 
+static inline b32
+param_0_gt_0(size ndim, f64 const *params, void *ud)
+{
+    return params[0] > 0.0;
+}
+
+static inline b32
+param_1_gt_0(size ndim, f64 const *params, void *ud)
+{
+    return params[1] > 0.0;
+}
+
 static void
 test_simple_model(void)
 {
@@ -113,11 +125,15 @@ test_simple_model(void)
     BayLaErrorValue x0_exp = bayla_samples_calculate_expectation(&samples, get_param0, NULL);
     BayLaErrorValue x1_exp = bayla_samples_calculate_expectation(&samples, get_param1, NULL);
 
+    f64 x0_gt_0 = bayla_samples_calculate_prob_predicate(&samples, param_0_gt_0, NULL);
+    f64 x1_gt_0 = bayla_samples_calculate_prob_predicate(&samples, param_1_gt_0, NULL);
+
     printf("   Credible Intervals - x0: [ %9.6lf -> %9.6lf -> %9.6lf]        x1: [ %9.6lf -> %9.6lf -> %9.6lf ]\n",
             x0_ci.low, x0_exp.val, x0_ci.high, x1_ci.low, x1_exp.val, x1_ci.high);
     printf("Expectation (w/error) - x0:                %9.6lf ±  %9.6lf (%0.2lf%%) x1:                %9.6lf ±  %9.6lf (%0.2lf%%)\n",
             x0_exp.val, 3.0 * x0_exp.std, 100.0 * fabs(3.0 * x0_exp.std / x0_exp.val),
             x1_exp.val, 3.0 * x1_exp.std, 100.0 * fabs(3.0 * x1_exp.std / x1_exp.val));
+    printf("           Prob > 0.0 - x0:                    %5.2lf%%                     x1:                    %5.2lf%%\n", x0_gt_0 * 100.0, x1_gt_0 * 100.0);
     printf("           True Value - x0:                %9.6lf                      x1:                %9.6lf\n", true_mean[0], true_mean[1]);
     f64 x0_zscore = (true_mean[0] - x0_exp.val) / x0_exp.std;
     f64 x1_zscore = (true_mean[1] - x1_exp.val) / x1_exp.std;

@@ -218,6 +218,7 @@ API BayLaLogValue bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64
 API BayLaCredibleInterval bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, MagAllocator scratch);
 API BayLaErrorValue bayla_samples_estimate_evidence(BayLaSamples *samples);
 API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud);
+API f64 bayla_samples_calculate_prob_predicate(BayLaSamples *samples, b32 (*func)(size n, f64 const *params, void *ud), void *ud);
 
 /* Since we can only know the Hessian to within a constant factor, this optimizes the scale factor to maximize the effective
  * sample size.
@@ -1497,6 +1498,32 @@ bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f
     f64 std = sqrt(v_acc.sum / total_weight / samples->neff);
 
     return (BayLaErrorValue){ .val = mean, .std = std};
+}
+
+API f64 
+bayla_samples_calculate_prob_predicate(BayLaSamples *samples, b32 (*func)(size n, f64 const *params, void *ud), void *ud)
+{
+    size const n_samples = samples->n_samples;
+    size const ndim = samples->ndim;
+    size const ncols = ndim + 3;
+    size const widx = ndim + 2;
+    f64 const *rows = samples->rows;
+    f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
+
+    ElkKahanAccumulator f_acc = {0};
+
+    for(size r = 0; r < n_samples; ++r)
+    {
+        f64 const *row = &rows[r * ncols];
+        f64 w = exp(row[widx]);
+        b32 f = func(ndim, row, ud); /* Zero or one */
+
+        f_acc = elk_kahan_accumulator_add(f_acc, f * w);
+    }
+
+    f64 prob = f_acc.sum / total_weight;
+
+    return prob;
 }
 
 typedef struct
