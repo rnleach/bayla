@@ -2949,7 +2949,7 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  5th Order Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_model, 50000, 13, alloc, scratch1, pool);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_model, 500000, 13, alloc, scratch1, pool);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -2969,7 +2969,7 @@ test_5th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  5th Order Tau Model - sample");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_tau_model, 50000, 13, alloc, scratch1, pool);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_tau_model, 500000, 13, alloc, scratch1, pool);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);

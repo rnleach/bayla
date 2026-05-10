@@ -1283,6 +1283,8 @@ bayla_samples_save_csv(BayLaSamples *samples, BayLaLogValue ci_p_thresh, char co
             PAK_SORT_ASCENDING);       /* Sort in ascending order.                                 */
 
 
+    f64 max_w = samples->rows[ncols * (n_samples - 1) + widx];
+
     for(size r = 0; r < n_samples; ++r)
     {
         f64 *row = &samples->rows[r * ncols];
@@ -1290,7 +1292,7 @@ bayla_samples_save_csv(BayLaSamples *samples, BayLaLogValue ci_p_thresh, char co
         {
             fprintf(f, "%.18e,", row[c]);
         }
-        fprintf(f, "%.18e,%.18e,%.18e,%d\n", row[pidx], row[qidx], row[widx], row[pidx] >= ci_p_thresh.val ? 1 : 0);
+        fprintf(f, "%.18e,%.18e,%.18e,%d\n", row[pidx], row[qidx], row[widx] - max_w, row[pidx] >= ci_p_thresh.val ? 1 : 0);
     }
 
     fclose(f);
