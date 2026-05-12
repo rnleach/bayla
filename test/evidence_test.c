@@ -401,7 +401,7 @@ linear_model_log_likelihood(size num_parms, f64 const *parms, void *user_data)
     data->ncalls++;
     
     f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
-    f64 log_prob = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - N * Q / (2.0 * sigma * sigma);
+    f64 log_prob = -(N + 1.0) * log(sigma) - 0.5 * N * log(2.0 * ELK_PI) - 0.5 * N * Q / (sigma * sigma);
 
     return log_prob;
 }
@@ -488,16 +488,15 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
 
     f64 sigma2 = sigma * sigma;
     f64 sigma4 = sigma2 * sigma2;
-    f64 beta = (xy_bar - x_bar * y_bar) / (x_sq_bar - x_bar * x_bar);
 
     hess.data[MATRIX_IDX(0, 0, 3)] = -N / sigma2;
     hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = -N * x_bar / sigma2;
+    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
 
     hess.data[MATRIX_IDX(1, 1, 3)] = -N *x_sq_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 2.0 * N / sigma2 / sigma * (x_bar * y_bar - xy_bar + beta * (x_sq_bar - x_bar * x_bar));
+    hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 0.0;
 
     hess.data[MATRIX_IDX(2, 2, 3)] = (N +  1.0) / sigma2 - 3.0 * N * Q / sigma4;
-    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
 
     Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0);
 
@@ -741,7 +740,7 @@ second_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_d
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
 }
 
 static void
@@ -921,7 +920,7 @@ second_order_tau_model_log_likelihood(size num_parms, f64 const *parms, void *us
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
 }
 
 static void
@@ -1110,7 +1109,7 @@ third_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_da
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
 }
 
 static void
@@ -1326,7 +1325,7 @@ third_order_tau_model_log_likelihood(size num_parms, f64 const *parms, void *use
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
 }
 
 static void
@@ -1553,7 +1552,7 @@ fourth_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_d
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
 }
 
 static void
@@ -1805,7 +1804,7 @@ fourth_order_tau_model_log_likelihood(size num_parms, f64 const *parms, void *us
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
 }
 
 static void
@@ -2063,7 +2062,7 @@ fifth_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_da
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * log(sigma) - 0.5 * N * Q / (sigma * sigma);
 }
 
 static void
@@ -2345,7 +2344,7 @@ fifth_order_tau_model_log_likelihood(size num_parms, f64 const *parms, void *use
 
     data->ncalls++;
 
-    return -N * 0.5 * log(ELK_2_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
+    return -N * 0.5 * log(2.0 * ELK_PI) - N * tau - 0.5 * N * Q * exp(-2.0 * tau);
 }
 
 static void
