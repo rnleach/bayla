@@ -492,7 +492,7 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
 
     hess.data[MATRIX_IDX(0, 0, 3)] = pf;
     hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = pf * x_bar;
-    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
+    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0.0;
 
     hess.data[MATRIX_IDX(1, 1, 3)] = pf * x_sq_bar;
     hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 0.0;
@@ -654,12 +654,12 @@ linear_tau_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_po
 
     hess.data[MATRIX_IDX(0, 0, 3)] = pre_factor;
     hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = pre_factor * x_bar;
+    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
 
     hess.data[MATRIX_IDX(1, 1, 3)] = pre_factor * x_sq_bar;
     hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 0;
 
     hess.data[MATRIX_IDX(2, 2, 3)] = -2.0 * N;
-    hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
 
     Assert(hess.data[MATRIX_IDX(0, 0, 3)] < 0.0 && hess.data[MATRIX_IDX(1, 1, 3)] < 0.0 && hess.data[MATRIX_IDX(2, 2, 3)] < 0.0);
 
@@ -2056,7 +2056,7 @@ fifth_order_model_log_likelihood(size num_parms, f64 const *parms, void *user_da
     f64 y_x5_bar = data->y_x5_bar;
 
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
-            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + v0 * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
                    + d * e * x7_bar + d * f * x8_bar
@@ -2123,7 +2123,7 @@ fifth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_o
     f64 f = parms_out[5];
 
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
-            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + v0 * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
                    + d * e * x7_bar + d * f * x8_bar
@@ -2180,7 +2180,7 @@ fifth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
     f64 y_x5_bar = data->y_x5_bar;
 
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
-            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + v0 * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
                    + d * e * x7_bar + d * f * x8_bar
@@ -2339,7 +2339,7 @@ fifth_order_tau_model_log_likelihood(size num_parms, f64 const *parms, void *use
     f64 y_x5_bar = data->y_x5_bar;
 
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
-            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + v0 * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
                    + d * e * x7_bar + d * f * x8_bar
@@ -2405,7 +2405,7 @@ fifth_order_tau_model_max_a_posteriori(void *user_data, size num_parms, f64 *par
     f64 f = parms_out[5];
 
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
-            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + v0 * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
                    + d * e * x7_bar + d * f * x8_bar
@@ -2461,7 +2461,7 @@ fifth_order_tau_model_2d_hessian(void *user_data, size num_parms, f64 const *max
     f64 y_x5_bar = data->y_x5_bar;
 
     f64 Q = v0 * v0 + b * b * x_sq_bar + c * c * x4_bar + d * d * x6_bar + e * e * x8_bar + f * f * x10_bar + y_sq_bar +
-            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + f * f * x5_bar
+            2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + v0 * e * x4_bar + v0 * f * x5_bar
                    + b * c * x3_bar + b * d * x4_bar + b * e * x5_bar + b * f * x6_bar
                    + c * d * x5_bar + c * e * x6_bar + c * f * x7_bar
                    + d * e * x7_bar + d * f * x8_bar
