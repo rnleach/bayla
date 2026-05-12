@@ -2760,7 +2760,6 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *p
     bayla_samples_save_csv(&samples, ci_thresh, "constant_model.csv");
 
     model_name = "Stud-T Constant";
-    eco_arena_reset(alloc);
     ap = COY_START_PROFILE_BLOCK("  Constant Model - sample Student's-T");
     samples = bayla_importance_sample_studt_approx(&constant_model, 1.4, 10000, 13, alloc, scratch1);
     z = bayla_samples_estimate_evidence(&samples);
@@ -2777,7 +2776,7 @@ static inline void
 test_constant_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "Laplace Constant Tau";
+    char *model_name = "LaPlace Constant Tau";
 
     MagAllocator *alloc = &alloc_;
 
@@ -2793,8 +2792,7 @@ test_constant_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPoo
     bayla_samples_save_csv(&samples, ci_thresh, "constant_tau_model.csv");
 
     model_name = "Stud-T Constant Tau";
-    eco_arena_reset(alloc);
-    ap = COY_START_PROFILE_BLOCK("  Constant Tau Model - sample Studen's-T");
+    ap = COY_START_PROFILE_BLOCK("  Constant Tau Model - sample Student's-T");
     samples = bayla_importance_sample_studt_approx(&constant_tau_model, 1.4, 10000, 13, alloc, scratch1);
     z = bayla_samples_estimate_evidence(&samples);
     ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2811,11 +2809,11 @@ static inline void
 test_linear_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "Linear";
+    char *model_name = "LaPlace Linear";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  Linear Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  Linear Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&linear_model, 10000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2825,17 +2823,29 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *poo
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "linear_model.csv");
+
+    model_name = "Stud-T Linear";
+    ap = COY_START_PROFILE_BLOCK("  Linear Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&linear_model, 1.4, 10000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_linear_model.csv");
 }
 
 static inline void
 test_linear_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "Linear Tau";
+    char *model_name = "LaPlace Linear Tau";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  Linear Tau Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  Linear Tau Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&linear_tau_model, 10000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2845,17 +2855,29 @@ test_linear_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool 
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "linear_tau_model.csv");
+
+    model_name = "Stud-T Linear Tau";
+    ap = COY_START_PROFILE_BLOCK("  Linear Tau Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&linear_tau_model, 1.4, 10000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_linear_tau_model.csv");
 }
 
 static inline void
 test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "2nd Order";
+    char *model_name = "LaPlace 2nd Order";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  2nd Order Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  2nd Order Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&second_order_model, 100000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2865,17 +2887,29 @@ test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "second_order_model.csv");
+
+    model_name = "Stud-T 2nd Order";
+    ap = COY_START_PROFILE_BLOCK("  2nd Order Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&second_order_model, 1.4, 100000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_second_order_model.csv");
 }
 
 static inline void
 test_2nd_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "2nd Order Tau";
+    char *model_name = "LaPlace 2nd Order Tau";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  2nd Order Tau Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  2nd Order Tau Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&second_order_tau_model, 100000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2885,17 +2919,29 @@ test_2nd_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "second_order_tau_model.csv");
+
+    model_name = "Stud-T 2nd Order Tau";
+    ap = COY_START_PROFILE_BLOCK("  2nd Order Tau Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&second_order_tau_model, 1.4, 100000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_second_order_tau_model.csv");
 }
 
 static inline void
 test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "3rd Order";
+    char *model_name = "LaPlace 3rd Order";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  3rd Order Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  3rd Order Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&third_order_model, 100000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2905,17 +2951,29 @@ test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "third_order_model.csv");
+
+    model_name = "Stud-T 3rd Order";
+    ap = COY_START_PROFILE_BLOCK("  3rd Order Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&third_order_model, 1.4, 100000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_third_order_model.csv");
 }
 
 static inline void
 test_3rd_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "3rd Order Tau";
+    char *model_name = "LaPlace 3rd Order Tau";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  3rd Order Tau Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  3rd Order Tau Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&third_order_tau_model, 100000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2925,17 +2983,29 @@ test_3rd_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "third_order_tau_model.csv");
+
+    model_name = "Stud-T 3rd Order Tau";
+    ap = COY_START_PROFILE_BLOCK("  3rd Order Tau Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&third_order_tau_model, 1.4, 100000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_third_order_tau_model.csv");
 }
 
 static inline void
 test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "4th Order";
+    char *model_name = "LaPlace 4th Order";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  4th Order Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  4th Order Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&fourth_order_model, 500000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2945,17 +3015,29 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "fourth_order_model.csv");
+
+    model_name = "Stud-T 4th Order";
+    ap = COY_START_PROFILE_BLOCK("  4th Order Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&fourth_order_model, 1.4, 500000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_fourth_order_model.csv");
 }
 
 static inline void
 test_4th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "4th Order Tau";
+    char *model_name = "LaPlace 4th Order Tau";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  4th Order Tau Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  4th Order Tau Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&fourth_order_tau_model, 500000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2965,17 +3047,29 @@ test_4th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "fourth_order_tau_model.csv");
+
+    model_name = "Stud-T 4th Order Tau";
+    ap = COY_START_PROFILE_BLOCK("  4th Order Tau Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&fourth_order_tau_model, 1.4, 500000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_fourth_order_tau_model.csv");
 }
 
 static inline void
 test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "5th Order";
+    char *model_name = "LaPlace 5th Order";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  5th Order Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  5th Order Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_model, 500000, 13, alloc, scratch1, pool);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -2985,17 +3079,29 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "fifth_order_model.csv");
+
+    model_name = "Stud-T 5th Order";
+    ap = COY_START_PROFILE_BLOCK("  5th Order Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&fifth_order_model, 1.4, 500000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_fifth_order_model.csv");
 }
 
 static inline void
 test_5th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "5th Order Tau";
+    char *model_name = "LaPlace 5th Order Tau";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  5th Order Tau Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  5th Order Tau Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_tau_model, 500000, 13, alloc, scratch1, pool);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
@@ -3005,6 +3111,18 @@ test_5th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "fifth_order_tau_model.csv");
+
+    model_name = "Stud-T 5th Order Tau";
+    ap = COY_START_PROFILE_BLOCK("  5th Order Tau Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&fifth_order_tau_model, 1.4, 500000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_fifth_order_tau_model.csv");
 }
 
 /*---------------------------------------------------   All Tests    -----------------------------------------------------*/

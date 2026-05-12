@@ -38,7 +38,7 @@ main(int argc, char *argv[])
         CoyBlockProfiler *block = &coy_global_profiler.blocks[i];
         if(block->hit_count)
         {
-            printf("%-34s Hits: %3"PRIu64" Exclusive: %6.2lf%%", block->label, block->hit_count, block->exclusive_pct);
+            printf("%-47s Hits: %3"PRIu64" Exclusive: %6.2lf%%", block->label, block->hit_count, block->exclusive_pct);
             
             if(block->inclusive_pct != block->exclusive_pct)
             {

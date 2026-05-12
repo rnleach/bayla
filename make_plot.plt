@@ -202,7 +202,60 @@ set term qt 7 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 3,3 rowsfirst scale 1.0, 1.0 title "Linear Model Test"
+set multiplot layout 3,3 rowsfirst scale 1.0, 1.0 title "Linear Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($5)) name "Q"
+stats [*:*][*:*] fn using (exp($6)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($5) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($6) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($6)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($5) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($6) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($6)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($6)) with points palette pt 7 notitle
+set title "sigma"
+plot fn using (bin($3, binwidth)):(exp($5) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($3, binwidth)):(exp($6) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Linear Model Student's-T -------------------------------------------------------------------------------------------------
+fn = "stud_t_linear_model.csv"
+set term qt 8 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 3,3 rowsfirst scale 1.0, 1.0 title "Linear Model Test (Student's-T Approx)"
 
 stats [*:*][*:*] fn using (exp($5)) name "Q"
 stats [*:*][*:*] fn using (exp($6)) name "W"
@@ -255,7 +308,60 @@ set term qt 9 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 3,3 rowsfirst scale 1.0, 1.0 title "Linear Tau Model Test"
+set multiplot layout 3,3 rowsfirst scale 1.0, 1.0 title "Linear Tau Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($5)) name "Q"
+stats [*:*][*:*] fn using (exp($6)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($5) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($6) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($6)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($5) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($6) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($6)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($6)) with points palette pt 7 notitle
+set title "tau"
+plot fn using (bin($3, binwidth)):(exp($5) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($3, binwidth)):(exp($6) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Linear Tau Model Student's-T ---------------------------------------------------------------------------------------------
+fn = "stud_t_linear_tau_model.csv"
+set term qt 10 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 3,3 rowsfirst scale 1.0, 1.0 title "Linear Tau Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($5)) name "Q"
 stats [*:*][*:*] fn using (exp($6)) name "W"
@@ -304,11 +410,95 @@ unset multiplot
 
 # Second Order Model -------------------------------------------------------------------------------------------------------
 fn = "second_order_model.csv"
-set term qt 9 size 1000,800
+set term qt 11 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 4,4 rowsfirst scale 1.0, 1.0 title "Second Order Model Test"
+set multiplot layout 4,4 rowsfirst scale 1.0, 1.0 title "Second Order Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($6)) name "Q"
+stats [*:*][*:*] fn using (exp($7)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset xrange
+unset yrange
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+unset title
+plot fn using 1:2:(exp($7)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($7)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($7)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($3, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+unset title
+plot fn using 1:4:(exp($7)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($7)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($7)) with points palette pt 7 notitle
+set title "sigma"
+plot fn using (bin($4, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($4, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Second Order Model Student's-T -------------------------------------------------------------------------------------------
+fn = "stud_t_second_order_model.csv"
+set term qt 12 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 4,4 rowsfirst scale 1.0, 1.0 title "Second Order Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($6)) name "Q"
 stats [*:*][*:*] fn using (exp($7)) name "W"
@@ -388,11 +578,95 @@ unset multiplot
 
 # Second Tau Order Model ---------------------------------------------------------------------------------------------------
 fn = "second_order_tau_model.csv"
-set term qt 10 size 1000,800
+set term qt 13 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 4,4 rowsfirst scale 1.0, 1.0 title "Second Order Tau Model Test"
+set multiplot layout 4,4 rowsfirst scale 1.0, 1.0 title "Second Order Tau Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($6)) name "Q"
+stats [*:*][*:*] fn using (exp($7)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset xrange
+unset yrange
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+unset title
+plot fn using 1:2:(exp($7)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($7)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($7)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($3, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+unset title
+plot fn using 1:4:(exp($7)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($7)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($7)) with points palette pt 7 notitle
+set title "tau"
+plot fn using (bin($4, binwidth)):(exp($6) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($4, binwidth)):(exp($7) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Second Tau Order Model Student's-T ---------------------------------------------------------------------------------------
+fn = "stud_t_second_order_tau_model.csv"
+set term qt 14 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 4,4 rowsfirst scale 1.0, 1.0 title "Second Order Tau Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($6)) name "Q"
 stats [*:*][*:*] fn using (exp($7)) name "W"
@@ -472,11 +746,11 @@ unset multiplot
 
 # Third Order Model --------------------------------------------------------------------------------------------------------
 fn = "third_order_model.csv"
-set term qt 11 size 1000,800
+set term qt 15 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 5,5 rowsfirst scale 1.0, 1.0 title "Third Order Model Test"
+set multiplot layout 5,5 rowsfirst scale 1.0, 1.0 title "Third Order Model Test (LaPlace Approx)"
 
 stats [*:*][*:*] fn using (exp($7)) name "Q"
 stats [*:*][*:*] fn using (exp($8)) name "W"
@@ -582,13 +856,238 @@ plot fn using (bin($5, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth bi
 
 unset multiplot
 
-# Third Order Tau Model ----------------------------------------------------------------------------------------------------
-fn = "third_order_tau_model.csv"
-set term qt 12 size 1000,800
+# Third Order Model Student's-T --------------------------------------------------------------------------------------------
+fn = "stud_t_third_order_model.csv"
+set term qt 16 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 5,5 rowsfirst scale 1.0, 1.0 title "Third Order Tau Model Test"
+set multiplot layout 5,5 rowsfirst scale 1.0, 1.0 title "Third Order Model Test (Student-T Approx)"
+
+stats [*:*][*:*] fn using (exp($7)) name "Q"
+stats [*:*][*:*] fn using (exp($8)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($8)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset xrange
+unset yrange
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($8)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($8)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($3, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:4:(exp($8)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($8)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($8)) with points palette pt 7 notitle
+set title "d"
+plot fn using (bin($4, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($4, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 5
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:5:(exp($8)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($8)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($8)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($8)) with points palette pt 7 notitle
+set title "sigma"
+plot fn using (bin($5, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($5, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+
+# Third Order Tau Model ----------------------------------------------------------------------------------------------------
+fn = "third_order_tau_model.csv"
+set term qt 17 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 5,5 rowsfirst scale 1.0, 1.0 title "Third Order Tau Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($7)) name "Q"
+stats [*:*][*:*] fn using (exp($8)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($8)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset xrange
+unset yrange
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($8)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($8)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($3, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:4:(exp($8)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($8)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($8)) with points palette pt 7 notitle
+set title "d"
+plot fn using (bin($4, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($4, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 5
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:5:(exp($8)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($8)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($8)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($8)) with points palette pt 7 notitle
+set title "tau"
+plot fn using (bin($5, binwidth)):(exp($7) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($5, binwidth)):(exp($8) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Third Order Tau Model Student's-T ----------------------------------------------------------------------------------------
+fn = "stud_t_third_order_tau_model.csv"
+set term qt 18 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 5,5 rowsfirst scale 1.0, 1.0 title "Third Order Tau Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($7)) name "Q"
 stats [*:*][*:*] fn using (exp($8)) name "W"
@@ -696,11 +1195,11 @@ unset multiplot
 
 # Fourth Order Model --------------------------------------------------------------------------------------------------------
 fn = "fourth_order_model.csv"
-set term qt 13 size 1000,800
+set term qt 19 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 6,6 rowsfirst scale 1.0, 1.0 title "Fourth Order Model Test"
+set multiplot layout 6,6 rowsfirst scale 1.0, 1.0 title "Fourth Order Model Test (LaPlace Approx)"
 
 stats [*:*][*:*] fn using (exp($8)) name "Q"
 stats [*:*][*:*] fn using (exp($9)) name "W"
@@ -838,13 +1337,302 @@ plot fn using (bin($6, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth bi
 
 unset multiplot
 
-# Fourth Order Tau Model ----------------------------------------------------------------------------------------------------
-fn = "fourth_order_tau_model.csv"
-set term qt 14 size 1000,800
+# Fourth Order Model Student's-T --------------------------------------------------------------------------------------------
+fn = "stud_t_fourth_order_model.csv"
+set term qt 20 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 6,6 rowsfirst scale 1.0, 1.0 title "Fourth Order Tau Model Test"
+set multiplot layout 6,6 rowsfirst scale 1.0, 1.0 title "Fourth Order Model Test (Student-T Approx)"
+
+stats [*:*][*:*] fn using (exp($8)) name "Q"
+stats [*:*][*:*] fn using (exp($9)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($1, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($9)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($2, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($9)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($3, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:4:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($9)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($9)) with points palette pt 7 notitle
+plot fn using (bin($4, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($4, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 4:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 5
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:5:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($9)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($9)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($9)) with points palette pt 7 notitle
+set title "e"
+plot fn using (bin($5, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($5, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 5:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 6
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 3:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 4:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 5:6:(exp($9)) with points palette pt 7 notitle
+set title "sigma"
+plot fn using (bin($6, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($6, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+
+unset multiplot
+
+
+# Fourth Order Tau Model ----------------------------------------------------------------------------------------------------
+fn = "fourth_order_tau_model.csv"
+set term qt 21 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 6,6 rowsfirst scale 1.0, 1.0 title "Fourth Order Tau Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($8)) name "Q"
+stats [*:*][*:*] fn using (exp($9)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($1, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($9)) with points palette pt 7 notitle
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($2, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($9)) with points palette pt 7 notitle
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($3, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:4:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($9)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($9)) with points palette pt 7 notitle
+plot fn using (bin($4, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($4, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 4:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 5
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:5:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($9)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($9)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($9)) with points palette pt 7 notitle
+set title "e"
+plot fn using (bin($5, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($5, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 5:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 6
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 2:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 3:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 4:6:(exp($9)) with points palette pt 7 notitle
+plot fn using 5:6:(exp($9)) with points palette pt 7 notitle
+set title "tau"
+plot fn using (bin($6, binwidth)):(exp($8) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($6, binwidth)):(exp($9) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+
+unset multiplot
+
+# Fourth Order Tau Model Student's-T ----------------------------------------------------------------------------------------
+fn = "stud_t_fourth_order_tau_model.csv"
+set term qt 22 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 6,6 rowsfirst scale 1.0, 1.0 title "Fourth Order Tau Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($8)) name "Q"
 stats [*:*][*:*] fn using (exp($9)) name "W"
@@ -984,11 +1772,209 @@ unset multiplot
 
 # Fifth Order Model --------------------------------------------------------------------------------------------------------
 fn = "fifth_order_model.csv"
-set term qt 15 size 1000,800
+set term qt 23 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Model Test"
+set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($9)) name "Q"
+stats [*:*][*:*] fn using (exp($10)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set yrange [0:*]
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($1, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($2, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($3, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:4:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "d"
+unset yrange
+plot fn using (bin($4, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($4, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 4:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 4:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 5
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "e"
+plot fn using (bin($5, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($5, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 5:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 5:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 6
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:6:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "f"
+plot fn using (bin($6, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($6, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 6:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 7
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 6:7:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "sigma"
+plot fn using (bin($7, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($7, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+
+unset multiplot
+
+# Fifth Order Model Student's-T --------------------------------------------------------------------------------------------
+fn = "stud_t_fifth_order_model.csv"
+set term qt 24 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($9)) name "Q"
 stats [*:*][*:*] fn using (exp($10)) name "W"
@@ -1182,11 +2168,209 @@ unset multiplot
 
 # Fifth Order Tau Model --------------------------------------------------------------------------------------------------------
 fn = "fifth_order_tau_model.csv"
-set term qt 16 size 1000,800
+set term qt 25 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Tau Model Test"
+set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Tau Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($9)) name "Q"
+stats [*:*][*:*] fn using (exp($10)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set yrange [0:*]
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($1, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 1:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "b"
+plot fn using (bin($2, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($2, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 2:3
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 2:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 3
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:3:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:3:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "c"
+plot fn using (bin($3, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($3, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 3:4
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 3:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 4
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:4:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:4:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:4:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "d"
+unset yrange
+plot fn using (bin($4, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($4, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+
+stats [*:*][*:*] fn using 4:5
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 4:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 4:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 5
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:5:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:5:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "e"
+plot fn using (bin($5, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($5, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 5:6
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+stats [*:*][*:*] fn using 5:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 6
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:6:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:6:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "f"
+plot fn using (bin($6, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($6, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+unset title
+unset yrange
+
+stats [*:*][*:*] fn using 6:7
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,12"
+plot [0:1] [0:1] NaN title ""
+
+unset label 1
+
+stats [*:*][*:*] fn using 7
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 2:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 3:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 4:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 5:7:(exp($10)) with points palette pt 7 notitle
+plot fn using 6:7:(exp($10)) with points palette pt 7 notitle
+set yrange [0:*]
+set title "tau"
+plot fn using (bin($7, binwidth)):(exp($9) / Q_sum) smooth kdensity bandwidth binwidth with l lw 3 lc rgb "#77FF0000" notitle, \
+     fn using (bin($7, binwidth)):(exp($10) / W_sum) smooth kdensity bandwidth binwidth with l lw 3 lc 19 notitle
+
+unset multiplot
+
+# Fifth Order Tau Model Student's-T --------------------------------------------------------------------------------------------
+fn = "stud_t_fifth_order_tau_model.csv"
+set term qt 26 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 7,7 rowsfirst scale 1.0, 1.0 title "Fifth Order Tau Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($9)) name "Q"
 stats [*:*][*:*] fn using (exp($10)) name "W"
