@@ -66,7 +66,7 @@ set term qt 3 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Constant Model Test"
+set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Constant Model Test (LaPlace Approx)"
 
 stats [*:*][*:*] fn using (exp($4)) name "Q"
 stats [*:*][*:*] fn using (exp($5)) name "W"
@@ -100,7 +100,75 @@ set term qt 4 size 1000,800
 
 set origin 0,0
 set size 1,1
-set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Constant Tau Model Test"
+set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Constant Tau Model Test (LaPlace Approx)"
+
+stats [*:*][*:*] fn using (exp($4)) name "Q"
+stats [*:*][*:*] fn using (exp($5)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($4) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($5) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($5)) with points palette pt 7 notitle
+set title "tau"
+plot fn using (bin($2, binwidth)):(exp($4) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($5) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Constant Model Students-T ------------------------------------------------------------------------------------------------
+fn = "stud_t_constant_model.csv"
+set term qt 5 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Constant Model Test (Student-T Approx)"
+
+stats [*:*][*:*] fn using (exp($4)) name "Q"
+stats [*:*][*:*] fn using (exp($5)) name "W"
+
+stats [*:*][*:*] fn using 1
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+set title "V0"
+plot fn using (bin($1, binwidth)):(exp($4) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($1, binwidth)):(exp($5) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+unset title
+
+stats [*:*][*:*] fn using 1:2
+set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14"
+plot [0:1] [0:1] NaN title ""
+unset label 1
+
+stats [*:*][*:*] fn using 2
+binwidth = (STATS_max - STATS_min) / bw_factor
+
+plot fn using 1:2:(exp($5)) with points palette pt 7 notitle
+set title "sigma"
+plot fn using (bin($2, binwidth)):(exp($4) / Q_sum) smooth kdensity bandwidth binwidth with l lw 4 lc rgb "#77FF0000" title "Q", \
+     fn using (bin($2, binwidth)):(exp($5) / W_sum) smooth kdensity bandwidth binwidth with l lw 4 lc 19 title "P"
+
+unset multiplot
+
+# Constant Tau Model Students-T --------------------------------------------------------------------------------------------
+fn = "stud_t_constant_tau_model.csv"
+set term qt 6 size 1000,800
+
+set origin 0,0
+set size 1,1
+set multiplot layout 2,2 rowsfirst scale 0.9, 0.9 title "Constant Tau Model Test (Student-T Approx)"
 
 stats [*:*][*:*] fn using (exp($4)) name "Q"
 stats [*:*][*:*] fn using (exp($5)) name "W"
@@ -130,7 +198,7 @@ unset multiplot
 
 # Linear Model -------------------------------------------------------------------------------------------------------------
 fn = "linear_model.csv"
-set term qt 5 size 1000,800
+set term qt 7 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -183,7 +251,7 @@ unset multiplot
 
 # Linear Tau Model ---------------------------------------------------------------------------------------------------------
 fn = "linear_tau_model.csv"
-set term qt 6 size 1000,800
+set term qt 9 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -236,7 +304,7 @@ unset multiplot
 
 # Second Order Model -------------------------------------------------------------------------------------------------------
 fn = "second_order_model.csv"
-set term qt 7 size 1000,800
+set term qt 9 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -320,7 +388,7 @@ unset multiplot
 
 # Second Tau Order Model ---------------------------------------------------------------------------------------------------
 fn = "second_order_tau_model.csv"
-set term qt 8 size 1000,800
+set term qt 10 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -404,7 +472,7 @@ unset multiplot
 
 # Third Order Model --------------------------------------------------------------------------------------------------------
 fn = "third_order_model.csv"
-set term qt 9 size 1000,800
+set term qt 11 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -516,7 +584,7 @@ unset multiplot
 
 # Third Order Tau Model ----------------------------------------------------------------------------------------------------
 fn = "third_order_tau_model.csv"
-set term qt 10 size 1000,800
+set term qt 12 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -628,7 +696,7 @@ unset multiplot
 
 # Fourth Order Model --------------------------------------------------------------------------------------------------------
 fn = "fourth_order_model.csv"
-set term qt 11 size 1000,800
+set term qt 13 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -772,7 +840,7 @@ unset multiplot
 
 # Fourth Order Tau Model ----------------------------------------------------------------------------------------------------
 fn = "fourth_order_tau_model.csv"
-set term qt 12 size 1000,800
+set term qt 14 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -916,7 +984,7 @@ unset multiplot
 
 # Fifth Order Model --------------------------------------------------------------------------------------------------------
 fn = "fifth_order_model.csv"
-set term qt 13 size 1000,800
+set term qt 15 size 1000,800
 
 set origin 0,0
 set size 1,1
@@ -1114,7 +1182,7 @@ unset multiplot
 
 # Fifth Order Tau Model --------------------------------------------------------------------------------------------------------
 fn = "fifth_order_tau_model.csv"
-set term qt 14 size 1000,800
+set term qt 16 size 1000,800
 
 set origin 0,0
 set size 1,1

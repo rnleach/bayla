@@ -2733,7 +2733,7 @@ test_log_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2744,40 +2744,67 @@ static inline void
 test_constant_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "Constant";
+    char *model_name = "LaPlace Constant";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  Constant Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  Constant Model - sample LaPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&constant_model, 10000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "constant_model.csv");
+
+    model_name = "Stud-T Constant";
+    eco_arena_reset(alloc);
+    ap = COY_START_PROFILE_BLOCK("  Constant Model - sample Student's-T");
+    samples = bayla_importance_sample_studt_approx(&constant_model, 1.4, 10000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_constant_model.csv");
 }
 
 static inline void
 test_constant_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *pool)
 {
     CoyProfileAnchor ap = {0};
-    char *model_name = "Constant Tau";
+    char *model_name = "Laplace Constant Tau";
 
     MagAllocator *alloc = &alloc_;
 
-    ap = COY_START_PROFILE_BLOCK("  Constant Tau Model - sample");
+    ap = COY_START_PROFILE_BLOCK("  Constant Tau Model - sample LapPlace");
     BayLaSamples samples = bayla_importance_sample_gauss_approx(&constant_tau_model, 10000, 13, alloc, scratch1);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "constant_tau_model.csv");
+
+    model_name = "Stud-T Constant Tau";
+    eco_arena_reset(alloc);
+    ap = COY_START_PROFILE_BLOCK("  Constant Tau Model - sample Studen's-T");
+    samples = bayla_importance_sample_studt_approx(&constant_tau_model, 1.4, 10000, 13, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "stud_t_constant_tau_model.csv");
+
 }
 
 static inline void
@@ -2793,7 +2820,7 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *poo
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2813,7 +2840,7 @@ test_linear_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool 
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2833,7 +2860,7 @@ test_2nd_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2853,7 +2880,7 @@ test_2nd_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2873,7 +2900,7 @@ test_3rd_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2893,7 +2920,7 @@ test_3rd_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2913,7 +2940,7 @@ test_4th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2933,7 +2960,7 @@ test_4th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2953,7 +2980,7 @@ test_5th_order_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPool *
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
@@ -2973,7 +3000,7 @@ test_5th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
-    printf("%14s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
             model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 

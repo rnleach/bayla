@@ -161,6 +161,23 @@ typedef struct
 API BayLaMVUniformDist bayla_mv_uniform_dist_create(i32 ndim, f64 *mins, f64 *maxs, MagAllocator *alloc);
 API BayLaLogValue bayla_mv_uniform_dist_random_deviate(BayLaMVUniformDist *dist, ElkRandomState *state, f64 *deviate);
 API BayLaLogValue bayla_mv_uniform_dist_prob(BayLaMVUniformDist *dist, f64 const *deviate);
+
+typedef struct
+{
+    i32 ndim;
+    b32 valid;
+    f64 *mean;
+    f64 nu;
+    BayLaCholeskyMatrix chol; /* Cholesky factor of sigma */
+    f64 log_det_sigma;
+    f64 log_const;
+} BayLaMVStudenTDist;
+
+API BayLaMVStudenTDist bayla_mv_studt_dist_create(i32 ndim, f64 *mean, BayLaSquareMatrix covar, f64 nu, MagAllocator *alloc);
+API BayLaMVStudenTDist bayla_mv_studt_dist_create_from_hessian(i32 ndim, f64 *mean, BayLaSquareMatrix hessian, f64 nu, MagAllocator *alloc);
+API BayLaLogValue bayla_mv_studt_dist_random_deviate(BayLaMVStudenTDist *dist, ElkRandomState *state, f64 *deviate);
+API BayLaLogValue bayla_mv_studt_dist_prob(BayLaMVStudenTDist *dist, f64 const *deviate);
+
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                              Analysis of Bayesian Models
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -212,6 +229,8 @@ typedef struct
 API BayLaSamples bayla_importance_sample_gauss_approx(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
 API BayLaSamples bayla_importance_sample_gauss_approx_par(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch, CoyThreadPool *pool);
 API BayLaSamples bayla_importance_sample_uniform(BayLaModel const *model, size n_samples, u64 seedd, f64 *mins, f64 *maxs, MagAllocator *alloc, MagAllocator scratch);
+API BayLaSamples bayla_importance_sample_studt_approx(BayLaModel const *model, f64 nu, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch);
+
 API void bayla_samples_save_csv(BayLaSamples *samples, BayLaLogValue ci_p_thresh, char const *fname);
 API BayLaLogValue bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAllocator scratch);
 
@@ -709,9 +728,10 @@ bayla_normal_distribution_create(f64 mean, f64 stddev)
     return (BayLaNormalDistribution){.mu = mean, .sigma = stddev};
 }
 
-API f64 
-bayla_normal_distribution_random_deviate(BayLaNormalDistribution *dist, ElkRandomState *state)
+API f64
+bayla_standard_normal_distribution_random_deviate(ElkRandomState *state)
 {
+    /* For internal use only. */
     f64 u = 0.0, v = 0.0, q = 0.0;
     do 
     {
@@ -728,7 +748,13 @@ bayla_normal_distribution_random_deviate(BayLaNormalDistribution *dist, ElkRando
 
     } while(q > 0.27597 && (q > 0.27846 || (v * v > -4.0 * log(u) * u * u)));
 
-    return dist->mu + dist->sigma * v / u;
+    return v / u;
+}
+
+API f64 
+bayla_normal_distribution_random_deviate(BayLaNormalDistribution *dist, ElkRandomState *state)
+{
+    return dist->mu + dist->sigma * bayla_standard_normal_distribution_random_deviate(state);
 }
 
 API b32
@@ -800,8 +826,10 @@ bayla_mv_norm_dist_create_from_hessian(i32 ndim, f64 *mean, BayLaSquareMatrix he
     for(size i = 0; i < ndim * ndim; ++i) { dist.inv_cov.data[i] = -hessian.data[i]; }
 
     dist.cov = bayla_square_matrix_invert(dist.inv_cov, alloc, scratch);
-    //bayla_square_matrix_print_symmetric_error(dist.cov);
-    //bayla_square_matrix_print(bayla_square_matrix_covariance_to_corr(dist.cov, alloc));
+#if 0
+    bayla_square_matrix_print_symmetric_error(dist.cov);
+    bayla_square_matrix_print(bayla_square_matrix_covariance_to_corr(dist.cov, alloc));
+#endif
 
     for(size i = 0; i < ndim; ++i) { Assert(dist.cov.data[MATRIX_IDX(i, i, ndim)] > 0.0); } /* Check positive variance. */
 
@@ -925,6 +953,161 @@ API BayLaLogValue
 bayla_mv_uniform_dist_prob(BayLaMVUniformDist *dist, f64 const *deviate)
 {
     return dist->prob;
+}
+
+f64 
+bayla_gamma_sample(f64 alpha, ElkRandomState *state)
+{
+    /* Marsaglia & Tsang Gamma sampler (shape=alpha, scale=1)
+     *
+     * Coded with assistance from Grok (xAI). Intended for internal use only.
+     */
+
+    if(alpha < 1.0) 
+    {
+        return bayla_gamma_sample(alpha + 1.0, state) * pow(elk_random_state_uniform_f64(state), 1.0 / alpha); 
+    }
+
+    f64 const d = alpha - 1.0 / 3.0;
+    f64 const c = 1.0 / sqrt(9.0 * d);
+
+    while(true)
+    {
+        f64 x, v;
+        do
+        {
+            x = bayla_standard_normal_distribution_random_deviate(state);
+            v = 1.0 + c * x;
+        } while( v <= 0.0);
+
+        v = v * v * v;
+        f64 u = elk_random_state_uniform_f64(state);
+
+        if( u < 1.0 - 0.0331 * x * x * x * x || log(u) < 0.5 * x * x + d * (1.0 - v + log(v))) 
+        {
+            return d * v;
+        }
+    }
+}
+
+API BayLaMVStudenTDist 
+bayla_mv_studt_dist_create(i32 ndim, f64 *mean, BayLaSquareMatrix covar, f64 nu, MagAllocator *alloc)
+{
+    BayLaMVStudenTDist dist = { .ndim = ndim, .valid = true, .nu = nu };
+
+    if(nu <= 0.0) { dist.valid = false; return dist; }
+
+    dist.mean = eco_arena_nmalloc(alloc, ndim, f64); Assert(dist.mean);
+    memcpy(dist.mean, mean, sizeof(*mean) * ndim);
+
+    dist.chol = bayla_cholesky_decomp(covar, alloc);
+    dist.valid = dist.chol.valid;
+    StopIf(!dist.valid, return dist);
+
+    f64 sum_log_diag = 0.0;
+    for(i32 i = 0; i < ndim; ++i) { sum_log_diag += log(dist.chol.data[MATRIX_IDX(i, i, ndim)]); }
+    dist.log_det_sigma = 2.0 * sum_log_diag;
+
+    f64 half_nu_d = 0.5 * (nu + ndim);
+    dist.log_const = lgamma(half_nu_d) - lgamma(0.5 * nu) - 0.5 * ndim * log(nu * ELK_PI) - 0.5 * dist.log_det_sigma;
+
+    return dist;
+}
+
+API BayLaMVStudenTDist 
+bayla_mv_studt_dist_create_from_hessian(i32 ndim, f64 *mean, BayLaSquareMatrix hessian, f64 nu, MagAllocator *alloc)
+{
+    MagStaticArena scratch_ = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    MagStaticArena scratch2_ = mag_static_arena_allocate_and_create(ECO_KiB(20));
+    MagAllocator scratch = mag_allocator_from_static_arena(&scratch_);
+    MagAllocator scratch2 = mag_allocator_from_static_arena(&scratch2_);
+
+    BayLaSquareMatrix inv_cov = bayla_square_matrix_create(ndim, &scratch);
+    for(size i = 0; i < ndim * ndim; ++i) { inv_cov.data[i] = -hessian.data[i]; }
+
+    BayLaSquareMatrix cov = bayla_square_matrix_invert(inv_cov, &scratch, scratch2);
+
+#if 0
+    bayla_square_matrix_print_symmetric_error(dist.cov);
+    bayla_square_matrix_print(bayla_square_matrix_covariance_to_corr(dist.cov, alloc));
+#endif
+
+    for(size i = 0; i < ndim; ++i) { Assert(cov.data[MATRIX_IDX(i, i, ndim)] > 0.0); } /* Check positive variance. */
+
+    BayLaMVStudenTDist dist = bayla_mv_studt_dist_create(ndim, mean, cov, nu, alloc);
+
+    eco_arena_destroy(&scratch);
+    eco_arena_destroy(&scratch2);
+
+    return dist;
+}
+
+API BayLaLogValue 
+bayla_mv_studt_dist_random_deviate(BayLaMVStudenTDist *dist, ElkRandomState *state, f64 *deviate)
+{
+#define MAX_NDIM 12
+    i32 const ndim = dist->ndim;
+    f64 const nu = dist->nu;
+    f64 const half_nu_d = 0.5 * (nu + (f64)ndim);
+
+    f64 y_work_space[MAX_NDIM]; Assert(ndim <= MAX_NDIM);
+
+    for(i32 i = 0; i < ndim; ++i) { y_work_space[i] = bayla_standard_normal_distribution_random_deviate(state); }
+    bayla_cholesky_multiply(dist->chol, ndim, y_work_space, deviate);
+
+    f64 g = bayla_gamma_sample(nu * 0.5, state) * (2.0 / nu);
+    f64 scale = sqrt(nu / g);
+    memset(y_work_space, 0, sizeof(y_work_space));
+    for(i32 i = 0; i < ndim; ++i)
+    {
+        deviate[i] *= scale;
+
+        f64 sum = deviate[i];
+        for(i32 j = 0; j < i; ++j)
+        {
+            sum -= dist->chol.data[MATRIX_IDX(i, j, ndim)] * y_work_space[j];
+        }
+        y_work_space[i] = sum / dist->chol.data[MATRIX_IDX(i, i, ndim)];
+
+        deviate[i] += dist->mean[i];
+    }
+
+    f64 quad = 0.0;
+    for(i32 i = 0; i < ndim; ++i) { quad += y_work_space[i] * y_work_space[i]; }
+
+    f64 logpdf = dist->log_const - half_nu_d * log(1.0 + quad / nu);
+
+    return bayla_log_value_create(logpdf);
+#undef MAX_NDIM
+}
+
+API BayLaLogValue 
+bayla_mv_studt_dist_prob(BayLaMVStudenTDist *dist, f64 const *deviate)
+{
+#define MAX_NDIM 12
+    i32 const ndim = dist->ndim;
+    f64 const nu = dist->nu;
+    f64 const half_nu_d = 0.5 * (nu + (f64)ndim);
+
+    f64 z_work_space[MAX_NDIM]; Assert(ndim <= MAX_NDIM);
+
+    for(i32 i = 0; i < ndim; ++i)
+    {
+        f64 sum = z_work_space[i] - dist->mean[i];
+        for(i32 j = 0; j < i; ++j)
+        {
+            sum -= dist->chol.data[MATRIX_IDX(i, j, ndim)] * z_work_space[j];
+        }
+        z_work_space[i] = sum / dist->chol.data[MATRIX_IDX(i, i, ndim)];
+    }
+
+    f64 quad = 0.0;
+    for(i32 i = 0; i < ndim; ++i) { quad += z_work_space[i] * z_work_space[i]; }
+
+    f64 logpdf = dist->log_const - half_nu_d * log(1.0 + quad / nu);
+
+    return bayla_log_value_create(logpdf);
+#undef MAX_NDIM
 }
 
 API BayLaLogValue 
@@ -1215,6 +1398,92 @@ bayla_importance_sample_uniform(BayLaModel const *model, size n_samples, u64 see
     {
         f64 *row = &rows[s * ncols];
         BayLaLogValue ld_qi = bayla_mv_uniform_dist_random_deviate(&prop_dist, state, row);
+        BayLaLogValue ld_pi = bayla_model_evaluate(model, row);
+        BayLaLogValue ld_wi = bayla_log_value_divide(ld_pi, ld_qi);
+
+        if(
+                   bayla_log_value_is_nan(ld_qi)
+                || bayla_log_value_is_nan(ld_pi)
+                || bayla_log_value_is_zero(ld_qi)
+                || bayla_log_value_is_zero(ld_pi)
+          )
+        {
+            --s; /* Redo this iteration. */
+            continue;
+        }
+
+        row[pidx] = ld_pi.val;
+        row[qidx] = ld_qi.val;
+        row[widx] = ld_wi.val;
+
+        ws[s] = ld_wi;
+    }
+
+    /* Calculate evidence */
+    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
+    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
+    samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
+
+    /* Normalize weights and square them for calculating effective sample size */
+    for(size s = 0; s < n_samples; ++s)
+    {
+        ws[s] = bayla_log_value_divide(ws[s], w_acc);
+        ws[s] = bayla_log_value_power(ws[s], 2.0);
+    }
+
+    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
+    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+
+    if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
+
+    return samples;
+}
+
+API BayLaSamples 
+bayla_importance_sample_studt_approx(BayLaModel const *model, f64 nu, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_)
+{
+    MagAllocator *scratch = &scratch_;
+
+    /* Fixed sizes and indexes. */
+    i32 const ndim = model->n_parameters;
+    size const pidx = ndim + 0;
+    size const qidx = ndim + 1;
+    size const widx = ndim + 2;
+    size const ncols = ndim + 3;            /* The last 3 are Q, P, and W */
+    f64 *rows = eco_arena_nmalloc(alloc, ncols * n_samples, f64);
+    Assert(rows);
+
+    BayLaSamples samples =
+        {
+            .n_samples = n_samples,
+            .ndim = ndim,
+            .neff = NAN,
+            .z_evidence = (BayLaLogValue){ .val = NAN},
+            .rows = rows,
+            .valid = true
+        };
+
+    ElkRandomState state_ = elk_random_state_create(seed);
+    ElkRandomState *state = &state_;
+
+    /* The proposal distribution. */
+    f64 *prop_mean = eco_arena_nmalloc(scratch, ndim, f64);
+    model->posterior_max(model->user_data, ndim, prop_mean);
+    BayLaSquareMatrix prop_hessian = model->hessian_matrix(model->user_data, ndim, prop_mean, scratch);
+
+    BayLaMVStudenTDist prop_dist = bayla_mv_studt_dist_create_from_hessian(ndim, prop_mean, prop_hessian, nu, scratch);
+    if(!prop_dist.valid)
+    {
+        samples.valid = prop_dist.valid;
+        return samples;
+    }
+
+    BayLaLogValue *ws = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
+
+    for(size s = 0; s < n_samples; ++s)
+    {
+        f64 *row = &rows[s * ncols];
+        BayLaLogValue ld_qi = bayla_mv_studt_dist_random_deviate(&prop_dist, state, row);
         BayLaLogValue ld_pi = bayla_model_evaluate(model, row);
         BayLaLogValue ld_wi = bayla_log_value_divide(ld_pi, ld_qi);
 
