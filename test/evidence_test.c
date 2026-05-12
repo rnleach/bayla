@@ -488,12 +488,13 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
 
     f64 sigma2 = sigma * sigma;
     f64 sigma4 = sigma2 * sigma2;
+    f64 pf = -N / sigma2; /* commone pre-multiplier */
 
-    hess.data[MATRIX_IDX(0, 0, 3)] = -N / sigma2;
-    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = -N * x_bar / sigma2;
+    hess.data[MATRIX_IDX(0, 0, 3)] = pf;
+    hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = pf * x_bar;
     hess.data[MATRIX_IDX(0, 2, 3)] = hess.data[MATRIX_IDX(2, 0, 3)] = 0;
 
-    hess.data[MATRIX_IDX(1, 1, 3)] = -N *x_sq_bar / sigma2;
+    hess.data[MATRIX_IDX(1, 1, 3)] = pf * x_sq_bar;
     hess.data[MATRIX_IDX(1, 2, 3)] = hess.data[MATRIX_IDX(2, 1, 3)] = 0.0;
 
     hess.data[MATRIX_IDX(2, 2, 3)] = (N +  1.0) / sigma2 - 3.0 * N * Q / sigma4;
@@ -823,20 +824,21 @@ second_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
+    f64 pf = -N / sigma2; /* common pre-multiplier, or prefactor */
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(4, alloc);
 
-    hess.data[MATRIX_IDX(0, 0, 4)] = -N / sigma2;
-    hess.data[MATRIX_IDX(0, 1, 4)] = hess.data[MATRIX_IDX(1, 0, 4)] = -N * x_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 2, 4)] = hess.data[MATRIX_IDX(2, 0, 4)] = -N * x_sq_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 3, 4)] = hess.data[MATRIX_IDX(3, 0, 4)] = 2 * N / sigma3 * (v0 + b * x_bar + c * x_sq_bar - y_bar);
+    hess.data[MATRIX_IDX(0, 0, 4)] = pf;
+    hess.data[MATRIX_IDX(0, 1, 4)] = hess.data[MATRIX_IDX(1, 0, 4)] = pf * x_bar;
+    hess.data[MATRIX_IDX(0, 2, 4)] = hess.data[MATRIX_IDX(2, 0, 4)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(0, 3, 4)] = hess.data[MATRIX_IDX(3, 0, 4)] = 0.0;
 
-    hess.data[MATRIX_IDX(1, 1, 4)] = -N / sigma2 * x_sq_bar;
-    hess.data[MATRIX_IDX(1, 2, 4)] = hess.data[MATRIX_IDX(2, 1, 4)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 3, 4)] = hess.data[MATRIX_IDX(3, 1, 4)] = 2 * N / sigma3 * (v0 * x_bar + b * x_sq_bar + c * x3_bar - xy_bar);
+    hess.data[MATRIX_IDX(1, 1, 4)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(1, 2, 4)] = hess.data[MATRIX_IDX(2, 1, 4)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(1, 3, 4)] = hess.data[MATRIX_IDX(3, 1, 4)] = 0.0;
 
-    hess.data[MATRIX_IDX(2, 2, 4)] = -N / sigma2 * x4_bar;
-    hess.data[MATRIX_IDX(2, 3, 4)] = hess.data[MATRIX_IDX(3, 2, 4)] = 2 * N / sigma3 * (v0 * x_sq_bar + b * x3_bar + c * x4_bar - y_x2_bar);
+    hess.data[MATRIX_IDX(2, 2, 4)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(2, 3, 4)] = hess.data[MATRIX_IDX(3, 2, 4)] = 0.0;
 
     hess.data[MATRIX_IDX(3, 3, 4)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
 
@@ -1205,30 +1207,30 @@ third_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
             2.0 * (v0 * b * x_bar + v0 * c * x_sq_bar + v0 * d * x3_bar + b * c * x3_bar + b * d * x4_bar + c * d * x5_bar
                     - v0 * y_bar - b * xy_bar - c * y_x2_bar - d * y_x3_bar);
 
-
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
+    f64 pf = -N / sigma2; /* common pre-multiplier, or prefactor */
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(5, alloc);
 
-    hess.data[MATRIX_IDX(0, 0, 5)] = -N / sigma2;
-    hess.data[MATRIX_IDX(0, 1, 5)] = hess.data[MATRIX_IDX(1, 0, 5)] = -N * x_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 2, 5)] = hess.data[MATRIX_IDX(2, 0, 5)] = -N * x_sq_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 3, 5)] = hess.data[MATRIX_IDX(3, 0, 5)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 4, 5)] = hess.data[MATRIX_IDX(4, 0, 5)] = 2 * N / sigma3 * (v0 + b * x_bar + c * x_sq_bar + d * x3_bar - y_bar);
+    hess.data[MATRIX_IDX(0, 0, 5)] = pf;
+    hess.data[MATRIX_IDX(0, 1, 5)] = hess.data[MATRIX_IDX(1, 0, 5)] = pf * x_bar;
+    hess.data[MATRIX_IDX(0, 2, 5)] = hess.data[MATRIX_IDX(2, 0, 5)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(0, 3, 5)] = hess.data[MATRIX_IDX(3, 0, 5)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(0, 4, 5)] = hess.data[MATRIX_IDX(4, 0, 5)] = 0.0;
 
-    hess.data[MATRIX_IDX(1, 1, 5)] = -N / sigma2 * x_sq_bar;
-    hess.data[MATRIX_IDX(1, 2, 5)] = hess.data[MATRIX_IDX(2, 1, 5)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 3, 5)] = hess.data[MATRIX_IDX(3, 1, 5)] = -N * x4_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 4, 5)] = hess.data[MATRIX_IDX(4, 1, 5)] = 2 * N / sigma3 * (v0 * x_bar + b * x_sq_bar + c * x3_bar + d * x4_bar - xy_bar);
+    hess.data[MATRIX_IDX(1, 1, 5)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(1, 2, 5)] = hess.data[MATRIX_IDX(2, 1, 5)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(1, 3, 5)] = hess.data[MATRIX_IDX(3, 1, 5)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(1, 4, 5)] = hess.data[MATRIX_IDX(4, 1, 5)] = 0.0;
 
-    hess.data[MATRIX_IDX(2, 2, 5)] = -N / sigma2 * x4_bar;
-    hess.data[MATRIX_IDX(2, 3, 5)] = hess.data[MATRIX_IDX(3, 2, 5)] = -N * x5_bar / sigma2;
-    hess.data[MATRIX_IDX(2, 4, 5)] = hess.data[MATRIX_IDX(4, 2, 5)] = 2 * N / sigma3 * (v0 * x_sq_bar + b * x3_bar + c * x4_bar + d * x5_bar - y_x2_bar);
+    hess.data[MATRIX_IDX(2, 2, 5)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(2, 3, 5)] = hess.data[MATRIX_IDX(3, 2, 5)] = pf * x5_bar;
+    hess.data[MATRIX_IDX(2, 4, 5)] = hess.data[MATRIX_IDX(4, 2, 5)] = 0.0;
 
-    hess.data[MATRIX_IDX(3, 3, 5)] = -N / sigma2 * x6_bar;
-    hess.data[MATRIX_IDX(3, 4, 5)] = hess.data[MATRIX_IDX(4, 3, 5)] = 2 * N / sigma3 * (v0 * x3_bar + b * x4_bar + c * x5_bar + d * x6_bar - y_x3_bar);
+    hess.data[MATRIX_IDX(3, 3, 5)] = pf * x6_bar;
+    hess.data[MATRIX_IDX(3, 4, 5)] = hess.data[MATRIX_IDX(4, 3, 5)] = 0.0;
 
     hess.data[MATRIX_IDX(4, 4, 5)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
 
@@ -1587,8 +1589,8 @@ fourth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_
         {
                  1.0,    x_bar, x_sq_bar, x3_bar, x4_bar,
                x_bar, x_sq_bar,   x3_bar, x4_bar, x5_bar,
-            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x5_bar,
-              x3_bar,   x4_bar,   x5_bar, x6_bar, x5_bar,
+            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x6_bar,
+              x3_bar,   x4_bar,   x5_bar, x6_bar, x7_bar,
               x4_bar,   x5_bar,   x6_bar, x7_bar, x8_bar
         };
     BayLaSquareMatrix m = { .ndim = 5, .data = m_data };
@@ -1666,33 +1668,34 @@ fourth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
+    f64 pf = -N / sigma2; /* common pre-multiplier, or prefactor */
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(6, alloc);
 
-    hess.data[MATRIX_IDX(0, 0, 6)] = -N / sigma2;
-    hess.data[MATRIX_IDX(0, 1, 6)] = hess.data[MATRIX_IDX(1, 0, 6)] = -N * x_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 2, 6)] = hess.data[MATRIX_IDX(2, 0, 6)] = -N * x_sq_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 3, 6)] = hess.data[MATRIX_IDX(3, 0, 6)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 4, 6)] = hess.data[MATRIX_IDX(4, 0, 6)] = -N * x4_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 5, 6)] = hess.data[MATRIX_IDX(5, 0, 6)] = 2 * N / sigma3 * (v0 + b * x_bar + c * x_sq_bar + d * x3_bar + e * x4_bar - y_bar);
+    hess.data[MATRIX_IDX(0, 0, 6)] = pf;
+    hess.data[MATRIX_IDX(0, 1, 6)] = hess.data[MATRIX_IDX(1, 0, 6)] = pf * x_bar;
+    hess.data[MATRIX_IDX(0, 2, 6)] = hess.data[MATRIX_IDX(2, 0, 6)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(0, 3, 6)] = hess.data[MATRIX_IDX(3, 0, 6)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(0, 4, 6)] = hess.data[MATRIX_IDX(4, 0, 6)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(0, 5, 6)] = hess.data[MATRIX_IDX(5, 0, 6)] = 0.0;
 
-    hess.data[MATRIX_IDX(1, 1, 6)] = -N / sigma2 * x_sq_bar;
-    hess.data[MATRIX_IDX(1, 2, 6)] = hess.data[MATRIX_IDX(2, 1, 6)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 3, 6)] = hess.data[MATRIX_IDX(3, 1, 6)] = -N * x4_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 4, 6)] = hess.data[MATRIX_IDX(4, 1, 6)] = -N * x5_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 5, 6)] = hess.data[MATRIX_IDX(5, 1, 6)] = 2 * N / sigma3 * (v0 * x_bar + b * x_sq_bar + c * x3_bar + d * x4_bar + e * x5_bar - xy_bar);
+    hess.data[MATRIX_IDX(1, 1, 6)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(1, 2, 6)] = hess.data[MATRIX_IDX(2, 1, 6)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(1, 3, 6)] = hess.data[MATRIX_IDX(3, 1, 6)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(1, 4, 6)] = hess.data[MATRIX_IDX(4, 1, 6)] = pf * x5_bar;
+    hess.data[MATRIX_IDX(1, 5, 6)] = hess.data[MATRIX_IDX(5, 1, 6)] = 0.0;
 
-    hess.data[MATRIX_IDX(2, 2, 6)] = -N / sigma2 * x4_bar;
-    hess.data[MATRIX_IDX(2, 3, 6)] = hess.data[MATRIX_IDX(3, 2, 6)] = -N * x5_bar / sigma2;
-    hess.data[MATRIX_IDX(2, 4, 6)] = hess.data[MATRIX_IDX(4, 2, 6)] = -N * x6_bar / sigma2;
-    hess.data[MATRIX_IDX(2, 5, 6)] = hess.data[MATRIX_IDX(5, 2, 6)] = 2 * N / sigma3 * (v0 * x_sq_bar + b * x3_bar + c * x4_bar + d * x5_bar + e * x6_bar - y_x2_bar);
+    hess.data[MATRIX_IDX(2, 2, 6)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(2, 3, 6)] = hess.data[MATRIX_IDX(3, 2, 6)] = pf * x5_bar;
+    hess.data[MATRIX_IDX(2, 4, 6)] = hess.data[MATRIX_IDX(4, 2, 6)] = pf * x6_bar;
+    hess.data[MATRIX_IDX(2, 5, 6)] = hess.data[MATRIX_IDX(5, 2, 6)] = 0.0;
 
-    hess.data[MATRIX_IDX(3, 3, 6)] = -N / sigma2 * x6_bar;
-    hess.data[MATRIX_IDX(3, 4, 6)] = hess.data[MATRIX_IDX(4, 3, 6)] = -N / sigma2 * x7_bar;
-    hess.data[MATRIX_IDX(3, 5, 6)] = hess.data[MATRIX_IDX(5, 3, 6)] = 2 * N / sigma3 * (v0 * x3_bar + b * x4_bar + c * x5_bar + d * x6_bar + e * x7_bar - y_x3_bar);
+    hess.data[MATRIX_IDX(3, 3, 6)] = pf * x6_bar;
+    hess.data[MATRIX_IDX(3, 4, 6)] = hess.data[MATRIX_IDX(4, 3, 6)] = pf * x7_bar;
+    hess.data[MATRIX_IDX(3, 5, 6)] = hess.data[MATRIX_IDX(5, 3, 6)] = 0.0;
 
-    hess.data[MATRIX_IDX(4, 4, 6)] = -N / sigma2 * x8_bar;
-    hess.data[MATRIX_IDX(4, 5, 6)] = hess.data[MATRIX_IDX(5, 4, 6)] =  2 * N / sigma3 * (v0 * x4_bar + b * x5_bar + c * x6_bar + d * x7_bar + e * x8_bar - y_x4_bar);
+    hess.data[MATRIX_IDX(4, 4, 6)] = pf * x8_bar;
+    hess.data[MATRIX_IDX(4, 5, 6)] = hess.data[MATRIX_IDX(5, 4, 6)] = 0.0;
 
     hess.data[MATRIX_IDX(5, 5, 6)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
 
@@ -1838,8 +1841,8 @@ fourth_order_tau_model_max_a_posteriori(void *user_data, size num_parms, f64 *pa
         {
                  1.0,    x_bar, x_sq_bar, x3_bar, x4_bar,
                x_bar, x_sq_bar,   x3_bar, x4_bar, x5_bar,
-            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x5_bar,
-              x3_bar,   x4_bar,   x5_bar, x6_bar, x5_bar,
+            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x6_bar,
+              x3_bar,   x4_bar,   x5_bar, x6_bar, x7_bar,
               x4_bar,   x5_bar,   x6_bar, x7_bar, x8_bar
         };
     BayLaSquareMatrix m = { .ndim = 5, .data = m_data };
@@ -1965,8 +1968,8 @@ BayLaModel fourth_order_tau_model =
 /*-----------------------------------------------  5th Order Polynomial  -------------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, parm 5 is quintic,
  * param 6 is a standard deviation. */
-f64 fifth_order_min_parms[7] = {-24.0, -24.0, -24.0, -24.0, -24.0, -24.0, 1.0e-5 };
-f64 fifth_order_max_parms[7] = {+24.0, +24.0, +24.0, +24.0, +24.0, +24.0, 15.0 };
+f64 fifth_order_min_parms[7] = {-48.0, -48.0, -48.0, -48.0, -48.0, -48.0, 1.0e-5 };
+f64 fifth_order_max_parms[7] = {+48.0, +48.0, +48.0, +48.0, +48.0, +48.0, 15.0 };
 
 static f64 
 fifth_order_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -2100,8 +2103,8 @@ fifth_order_model_max_a_posteriori(void *user_data, size num_parms, f64 *parms_o
         {
                  1.0,    x_bar, x_sq_bar, x3_bar, x4_bar, x5_bar,
                x_bar, x_sq_bar,   x3_bar, x4_bar, x5_bar, x6_bar,
-            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x5_bar, x7_bar,
-              x3_bar,   x4_bar,   x5_bar, x6_bar, x5_bar, x7_bar,
+            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x6_bar, x7_bar,
+              x3_bar,   x4_bar,   x5_bar, x6_bar, x7_bar, x8_bar,
               x4_bar,   x5_bar,   x6_bar, x7_bar, x8_bar, x9_bar,
               x5_bar,   x6_bar,   x7_bar, x8_bar, x9_bar, x10_bar
         };
@@ -2187,41 +2190,42 @@ fifth_order_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_p
     f64 sigma2 = sigma * sigma;
     f64 sigma3 = sigma2 * sigma;
     f64 sigma4 = sigma3 * sigma;
+    f64 pf = -N / sigma2; /* common pre-multiplier, or prefactor */
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(7, alloc);
 
-    hess.data[MATRIX_IDX(0, 0, 7)] = -N / sigma2;
-    hess.data[MATRIX_IDX(0, 1, 7)] = hess.data[MATRIX_IDX(1, 0, 7)] = -N * x_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 2, 7)] = hess.data[MATRIX_IDX(2, 0, 7)] = -N * x_sq_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 3, 7)] = hess.data[MATRIX_IDX(3, 0, 7)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 4, 7)] = hess.data[MATRIX_IDX(4, 0, 7)] = -N * x4_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 5, 7)] = hess.data[MATRIX_IDX(5, 0, 7)] = -N * x5_bar / sigma2;
-    hess.data[MATRIX_IDX(0, 6, 7)] = hess.data[MATRIX_IDX(6, 0, 7)] = 2 * N / sigma3 * (v0 + b * x_bar + c * x_sq_bar + d * x3_bar + e * x4_bar + f * x5_bar - y_bar);
+    hess.data[MATRIX_IDX(0, 0, 7)] = pf;
+    hess.data[MATRIX_IDX(0, 1, 7)] = hess.data[MATRIX_IDX(1, 0, 7)] = pf * x_bar;
+    hess.data[MATRIX_IDX(0, 2, 7)] = hess.data[MATRIX_IDX(2, 0, 7)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(0, 3, 7)] = hess.data[MATRIX_IDX(3, 0, 7)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(0, 4, 7)] = hess.data[MATRIX_IDX(4, 0, 7)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(0, 5, 7)] = hess.data[MATRIX_IDX(5, 0, 7)] = pf * x5_bar;
+    hess.data[MATRIX_IDX(0, 6, 7)] = hess.data[MATRIX_IDX(6, 0, 7)] = 0.0;
 
-    hess.data[MATRIX_IDX(1, 1, 7)] = -N / sigma2 * x_sq_bar;
-    hess.data[MATRIX_IDX(1, 2, 7)] = hess.data[MATRIX_IDX(2, 1, 7)] = -N * x3_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 3, 7)] = hess.data[MATRIX_IDX(3, 1, 7)] = -N * x4_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 4, 7)] = hess.data[MATRIX_IDX(4, 1, 7)] = -N * x5_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 5, 7)] = hess.data[MATRIX_IDX(5, 1, 7)] = -N * x6_bar / sigma2;
-    hess.data[MATRIX_IDX(1, 6, 7)] = hess.data[MATRIX_IDX(6, 1, 7)] = 2 * N / sigma3 * (v0 * x_bar + b * x_sq_bar + c * x3_bar + d * x4_bar + e * x5_bar + f * x6_bar - xy_bar);
+    hess.data[MATRIX_IDX(1, 1, 7)] = pf * x_sq_bar;
+    hess.data[MATRIX_IDX(1, 2, 7)] = hess.data[MATRIX_IDX(2, 1, 7)] = pf * x3_bar;
+    hess.data[MATRIX_IDX(1, 3, 7)] = hess.data[MATRIX_IDX(3, 1, 7)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(1, 4, 7)] = hess.data[MATRIX_IDX(4, 1, 7)] = pf * x5_bar;
+    hess.data[MATRIX_IDX(1, 5, 7)] = hess.data[MATRIX_IDX(5, 1, 7)] = pf * x6_bar;
+    hess.data[MATRIX_IDX(1, 6, 7)] = hess.data[MATRIX_IDX(6, 1, 7)] = 0.0;
 
-    hess.data[MATRIX_IDX(2, 2, 7)] = -N / sigma2 * x4_bar;
-    hess.data[MATRIX_IDX(2, 3, 7)] = hess.data[MATRIX_IDX(3, 2, 7)] = -N * x5_bar / sigma2;
-    hess.data[MATRIX_IDX(2, 4, 7)] = hess.data[MATRIX_IDX(4, 2, 7)] = -N * x6_bar / sigma2;
-    hess.data[MATRIX_IDX(2, 5, 7)] = hess.data[MATRIX_IDX(5, 2, 7)] = -N * x7_bar / sigma2;
-    hess.data[MATRIX_IDX(2, 6, 7)] = hess.data[MATRIX_IDX(6, 2, 7)] = 2 * N / sigma3 * (v0 * x_sq_bar + b * x3_bar + c * x4_bar + d * x5_bar + e * x6_bar + f * x7_bar - y_x2_bar);
+    hess.data[MATRIX_IDX(2, 2, 7)] = pf * x4_bar;
+    hess.data[MATRIX_IDX(2, 3, 7)] = hess.data[MATRIX_IDX(3, 2, 7)] = pf * x5_bar;
+    hess.data[MATRIX_IDX(2, 4, 7)] = hess.data[MATRIX_IDX(4, 2, 7)] = pf * x6_bar;
+    hess.data[MATRIX_IDX(2, 5, 7)] = hess.data[MATRIX_IDX(5, 2, 7)] = pf * x7_bar;
+    hess.data[MATRIX_IDX(2, 6, 7)] = hess.data[MATRIX_IDX(6, 2, 7)] = 0.0;
 
-    hess.data[MATRIX_IDX(3, 3, 7)] = -N / sigma2 * x6_bar;
-    hess.data[MATRIX_IDX(3, 4, 7)] = hess.data[MATRIX_IDX(4, 3, 7)] = -N / sigma2 * x7_bar;
-    hess.data[MATRIX_IDX(3, 5, 7)] = hess.data[MATRIX_IDX(5, 3, 7)] = -N / sigma2 * x8_bar;
-    hess.data[MATRIX_IDX(3, 6, 7)] = hess.data[MATRIX_IDX(6, 3, 7)] = 2 * N / sigma3 * (v0 * x3_bar + b * x4_bar + c * x5_bar + d * x6_bar + e * x7_bar + f * x8_bar - y_x3_bar);
+    hess.data[MATRIX_IDX(3, 3, 7)] = pf * x6_bar;
+    hess.data[MATRIX_IDX(3, 4, 7)] = hess.data[MATRIX_IDX(4, 3, 7)] = pf * x7_bar;
+    hess.data[MATRIX_IDX(3, 5, 7)] = hess.data[MATRIX_IDX(5, 3, 7)] = pf * x8_bar;
+    hess.data[MATRIX_IDX(3, 6, 7)] = hess.data[MATRIX_IDX(6, 3, 7)] = 0.0;
 
-    hess.data[MATRIX_IDX(4, 4, 7)] = -N / sigma2 * x8_bar;
-    hess.data[MATRIX_IDX(4, 5, 7)] = hess.data[MATRIX_IDX(5, 4, 7)] = -N / sigma2 * x9_bar;
-    hess.data[MATRIX_IDX(4, 6, 7)] = hess.data[MATRIX_IDX(6, 4, 7)] =  2 * N / sigma3 * (v0 * x4_bar + b * x5_bar + c * x6_bar + d * x7_bar + e * x8_bar + f * x9_bar - y_x4_bar);
+    hess.data[MATRIX_IDX(4, 4, 7)] = pf * x8_bar;
+    hess.data[MATRIX_IDX(4, 5, 7)] = hess.data[MATRIX_IDX(5, 4, 7)] = pf * x9_bar;
+    hess.data[MATRIX_IDX(4, 6, 7)] = hess.data[MATRIX_IDX(6, 4, 7)] = 0.0;
 
-    hess.data[MATRIX_IDX(5, 5, 7)] = -N / sigma2 * x10_bar;
-    hess.data[MATRIX_IDX(5, 6, 7)] = hess.data[MATRIX_IDX(6, 5, 7)] =  2 * N / sigma3 * (v0 * x5_bar + b * x6_bar + c * x7_bar + d * x8_bar + e * x9_bar + f * x10_bar - y_x5_bar);
+    hess.data[MATRIX_IDX(5, 5, 7)] = pf * x10_bar;
+    hess.data[MATRIX_IDX(5, 6, 7)] = hess.data[MATRIX_IDX(6, 5, 7)] = 0.0;
 
     hess.data[MATRIX_IDX(6, 6, 7)] = (N + 1.0) / sigma2 - 3.0 * N * Q / sigma4;
 
@@ -2247,8 +2251,8 @@ BayLaModel fifth_order_model =
 /*---------------------------------------------  5th Order Tau Polynomial  -----------------------------------------------*/
 /* param 0 is constant, param 1 is linear, param 2 is quadratic , parm 3 is cubic, parm 4 is quartic, parm 5 is quintic,
  * param 6 is a standard deviation. */
-f64 fifth_order_tau_min_parms[7] = {-24.0, -24.0, -24.0, -24.0, -24.0, -24.0, -11.512925464970229 };
-f64 fifth_order_tau_max_parms[7] = {+24.0, +24.0, +24.0, +24.0, +24.0, +24.0, 2.70805020110221 };
+f64 fifth_order_tau_min_parms[7] = {-48.0, -48.0, -48.0, -48.0, -48.0, -48.0, -11.512925464970229 };
+f64 fifth_order_tau_max_parms[7] = {+48.0, +48.0, +48.0, +48.0, +48.0, +48.0, 2.70805020110221 };
 
 static f64 
 fifth_order_tau_model_log_prior(size num_parms, f64 const *parms, void *user_data)
@@ -2381,8 +2385,8 @@ fifth_order_tau_model_max_a_posteriori(void *user_data, size num_parms, f64 *par
         {
                  1.0,    x_bar, x_sq_bar, x3_bar, x4_bar, x5_bar,
                x_bar, x_sq_bar,   x3_bar, x4_bar, x5_bar, x6_bar,
-            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x5_bar, x7_bar,
-              x3_bar,   x4_bar,   x5_bar, x6_bar, x5_bar, x7_bar,
+            x_sq_bar,   x3_bar,   x4_bar, x5_bar, x6_bar, x7_bar,
+              x3_bar,   x4_bar,   x5_bar, x6_bar, x7_bar, x8_bar,
               x4_bar,   x5_bar,   x6_bar, x7_bar, x8_bar, x9_bar,
               x5_bar,   x6_bar,   x7_bar, x8_bar, x9_bar, x10_bar
         };
@@ -3101,7 +3105,7 @@ test_5th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
     MagAllocator *alloc = &alloc_;
 
     ap = COY_START_PROFILE_BLOCK("  5th Order Tau Model - sample LaPlace");
-    BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_tau_model, 500000, 13, alloc, scratch1, pool);
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_par(&fifth_order_tau_model, 1000000, 13, alloc, scratch1, pool);
     BayLaErrorValue z = bayla_samples_estimate_evidence(&samples);
     BayLaLogValue ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
@@ -3113,7 +3117,7 @@ test_5th_order_tau_model(MagAllocator alloc_, MagAllocator scratch1, CoyThreadPo
 
     model_name = "Stud-T 5th Order Tau";
     ap = COY_START_PROFILE_BLOCK("  5th Order Tau Model - sample Student's-T");
-    samples = bayla_importance_sample_studt_approx(&fifth_order_tau_model, 1.4, 500000, 13, alloc, scratch1);
+    samples = bayla_importance_sample_studt_approx(&fifth_order_tau_model, 1.4, 1000000, 13, alloc, scratch1);
     z = bayla_samples_estimate_evidence(&samples);
     ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
     COY_END_PROFILE(ap);
