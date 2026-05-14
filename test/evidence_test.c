@@ -2773,6 +2773,18 @@ test_constant_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scr
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "stud_t_constant_model.csv");
+
+    model_name = "Uniform Constant";
+    ap = COY_START_PROFILE_BLOCK("  Constant Model - sample Uniform");
+    samples = bayla_importance_sample_uniform(&constant_model, 10000, 13, constant_model_min_parms, constant_model_max_parms, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "uniform_constant_model.csv");
 }
 
 static inline void
@@ -2806,6 +2818,17 @@ test_constant_tau_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator
 
     bayla_samples_save_csv(&samples, ci_thresh, "stud_t_constant_tau_model.csv");
 
+    model_name = "Uniform Constant Tau";
+    ap = COY_START_PROFILE_BLOCK("  Constant Tau Model - sample Uniform");
+    samples = bayla_importance_sample_uniform(&constant_tau_model, 10000, 13, constant_tau_model_min_parms, constant_tau_model_max_parms, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "uniform_constant_tau_model.csv");
 }
 
 static inline void
@@ -2838,6 +2861,18 @@ test_linear_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator scrat
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "stud_t_linear_model.csv");
+
+    model_name = "Uniform Linear";
+    ap = COY_START_PROFILE_BLOCK("  Linear Model - sample Uniform");
+    samples = bayla_importance_sample_uniform(&linear_model, 10000, 13, linear_model_min_parms, linear_model_max_parms, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "uniform_linear_model.csv");
 }
 
 static inline void
@@ -2870,6 +2905,18 @@ test_linear_tau_model(MagAllocator alloc_, MagAllocator scratch1, MagAllocator s
             z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
 
     bayla_samples_save_csv(&samples, ci_thresh, "stud_t_linear_tau_model.csv");
+
+    model_name = "Uniform Linear Tau";
+    ap = COY_START_PROFILE_BLOCK("  Linear Tau Model - sample Uniform");
+    samples = bayla_importance_sample_uniform(&linear_tau_model, 10000, 13, linear_tau_model_min_parms, linear_tau_model_max_parms, alloc, scratch1);
+    z = bayla_samples_estimate_evidence(&samples);
+    ci_thresh = bayla_samples_calculate_ci_p_thresh(&samples, 0.68, scratch1);
+    COY_END_PROFILE(ap);
+    printf("%22s %4td %9td %6.0lf %15.2lf %11g ± %11g [%4.2lf%%]\n",
+            model_name, samples.ndim, samples.n_samples, samples.neff, samples.neff / samples.n_samples,
+            z.val, 3.0 * z.std, 3.0 * z.std / z.val * 100);
+
+    bayla_samples_save_csv(&samples, ci_thresh, "uniform_linear_tau_model.csv");
 }
 
 static inline void
