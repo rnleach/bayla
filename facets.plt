@@ -71,13 +71,8 @@ do for [v=1:n_vars:1] {
             unset title;
 
         } else if(r>v) {
-
-            # Correlation
-            stats [*:*][*:*] fn using (column(v)):(column(r));
-            set label 1 at 0.5,0.5 sprintf("%.4f", STATS_correlation) font "Courier,14";
-            plot [0:1] [0:1] NaN title "";
-            unset label 1
-
+            # Skip cell
+            set multiplot next;
         }
     }
 }
