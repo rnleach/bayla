@@ -33,7 +33,7 @@ if [ "$#" -gt 0 -a "$1" = "clean" ]
 then
     echo "clean compiled test program and test output"
     echo
-    rm -rf bayla-test *.dSYM *.csv
+    rm -rf bayla-test *.dSYM *.csv obs_models.plt
 fi
 
 if [ "$#" -gt 0 -a "$1" = "debug" ]

@@ -36,7 +36,7 @@ rem Clean up operations
 rem
 :Clean
 @echo Clean
-del *.exe *.obj *.pdb *.ilk *.dll *.csv
+del *.exe *.obj *.pdb *.ilk *.dll *.csv obs_models.plt
 GOTO EndSuccess
 
 rem
