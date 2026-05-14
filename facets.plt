@@ -49,7 +49,7 @@ do for [v=1:n_vars:1] {
         } else if(r==v) {
 
             # Histograms
-            if(r==1) { set title "V0"; }
+            if(r==1)      { set title "a"; }
             else if(r==2) { set title "b"; }
             else if(r==3) { set title "c"; }
             else if(r==4) { set title "d"; }
