@@ -239,6 +239,9 @@ API BayLaErrorValue bayla_samples_estimate_evidence(BayLaSamples *samples);
 API BayLaErrorValue bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f64 const *params, void *ud), void *ud);
 API f64 bayla_samples_calculate_prob_predicate(BayLaSamples *samples, b32 (*func)(size n, f64 const *params, void *ud), void *ud);
 
+/* Optimize some hyper-parameter to get the best ESS */
+API BayLaSamples bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool);
+API BayLaSamples bayla_importance_sample_studt_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool);
 /*---------------------------------------------------------------------------------------------------------------------------
  *
  *
@@ -1271,7 +1274,7 @@ bayla_importance_sample_gauss_approx_par_inner(void *td)
 }
 
 API BayLaSamples 
-bayla_importance_sample_gauss_approx_par(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_, CoyThreadPool *pool)
+bayla_importance_sample_gauss_approx_par_scaled(BayLaModel const *model, f64 sf, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_, CoyThreadPool *pool)
 {
     MagAllocator *scratch = &scratch_;
 
@@ -1295,6 +1298,12 @@ bayla_importance_sample_gauss_approx_par(BayLaModel const *model, size n_samples
     f64 *prop_mean = eco_arena_nmalloc(scratch, ndim, f64);
     model->posterior_max(model->user_data, ndim, prop_mean);
     BayLaSquareMatrix prop_hessian = model->hessian_matrix(model->user_data, ndim, prop_mean, scratch);
+
+    /* Apply the scale factor. */
+    for(i32 i = 0; i < ndim * ndim; ++i)
+    {
+        prop_hessian.data[i] /= sf;
+    }
 
     BayLaMVNormDist prop_dist = bayla_mv_norm_dist_create_from_hessian(ndim, prop_mean, prop_hessian, scratch);
     if(!prop_dist.valid)
@@ -1360,6 +1369,12 @@ bayla_importance_sample_gauss_approx_par(BayLaModel const *model, size n_samples
     if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
 
     return samples;
+}
+
+API BayLaSamples 
+bayla_importance_sample_gauss_approx_par(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_, CoyThreadPool *pool)
+{
+    return bayla_importance_sample_gauss_approx_par_scaled(model, 1.0, n_samples, seed, alloc, scratch_, pool);
 }
 
 API BayLaSamples 
@@ -1779,6 +1794,263 @@ bayla_samples_calculate_prob_predicate(BayLaSamples *samples, b32 (*func)(size n
     f64 prob = f_acc.sum / total_weight;
 
     return prob;
+}
+
+typedef struct
+{
+    f64 xa;
+    f64 xb;
+    f64 xc;
+    f64 fxa;
+    f64 fxb;
+    f64 fxc;
+} BayLaBracketPoints;
+
+static inline void shft2(f64 *a, f64 *b, f64 const c) { *a = *b; *b = c; }
+static inline void shft3(f64 *a, f64 *b, f64 *c, f64 const d) { *a = *b; *b = *c; *c = d; }
+static inline void mov3(f64 *a, f64 *b, f64 *c, f64 const d, f64 const e, f64 const f) { *a = d; *b = e; *c = f; }
+
+typedef f64 (*BayLaHyperParameterFuncOptFunc)(f64, BayLaModel const *, size, u64, MagAllocator, MagAllocator, CoyThreadPool *);
+
+static inline f64
+bayla_evaluate_samples_for_ess_gauss_approx(f64 sf, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool)
+{
+    BayLaSamples samples = bayla_importance_sample_gauss_approx_par_scaled(model, sf, n_samples, seed, &scratch1, scratch2, pool);
+
+    return samples.valid ? -samples.neff : 1.0e6;
+}
+
+static inline f64
+bayla_evaluate_samples_for_ess_stud_t_approx(f64 nu, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool)
+{
+    BayLaSamples samples = bayla_importance_sample_studt_approx(model, nu, n_samples, seed, &scratch1, scratch2);
+
+    return samples.valid ? -samples.neff : 1.0e6;
+}
+
+static BayLaBracketPoints
+bayla_bracket_minima(BayLaHyperParameterFuncOptFunc f, f64 initial_guess, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool)
+{
+    f64 const GOLD = 1.618034;
+    f64 const GLIMIT = 10.0;
+    f64 const TINY = 1.0e-20;
+
+    f64 *max_a_posteriori_parms = eco_arena_nmalloc(&scratch1, model->n_parameters, f64);
+    model->posterior_max(model->user_data, model->n_parameters, max_a_posteriori_parms);
+
+    f64 ax = initial_guess / 5.0;
+    f64 fa = f(ax, model, n_samples, seed, scratch1, scratch2, pool);
+    while(isinf(fa) || isnan(fa))
+    {
+        ax /= log(2.0);
+        fa = f(ax, model, n_samples, seed, scratch1, scratch2, pool);
+    }
+
+    f64 bx = initial_guess * 5.0;
+    f64 fb = f(bx, model, n_samples, seed, scratch1, scratch2, pool);
+    while(isinf(fb) || isnan(fb))
+    {
+        bx *= 2.0;
+        fb = f(bx, model, n_samples, seed, scratch1, scratch2, pool);
+    }
+
+    if(fb > fa) { swap(&ax, &bx); swap(&fa, &fb); }
+
+    f64 cx = bx + GOLD * (bx - ax);
+    f64 fc = f(cx, model, n_samples, seed, scratch1, scratch2, pool);
+    while(isinf(fc) || isnan(fc))
+    {
+        cx = bx + (cx - bx) / 2.0;
+        fc = f(cx, model, n_samples, seed, scratch1, scratch2, pool);
+    }
+
+    f64 fu = NAN;
+    while(fb > fc)
+    {
+        f64 r = (bx - ax) * (fb - fc);
+        f64 q = (bx - cx) * (fb - fa);
+        f64 u = bx - ((bx - cx) * q - (bx - ax) * r) / (2.0 * sign(maximum(fabs(q - r), TINY), q - r));
+        f64 ulim = bx + GLIMIT * (cx - bx);
+
+        if((bx - u) * (u - cx) > 0.0)
+        {
+            fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+            if(fu < fc)
+            {
+                ax = bx; fa = fb;
+                bx = u;  fb = fu;
+                return (BayLaBracketPoints){ .xa = ax, .xb = bx, .xc = cx, .fxa = fa, .fxb = fb, .fxc = fc };
+            }
+            else if (fu > fb)
+            {
+                cx = u; fc = fu;
+                return (BayLaBracketPoints){ .xa = ax, .xb = bx, .xc = cx, .fxa = fa, .fxb = fb, .fxc = fc };
+            }
+
+            u = cx + GOLD * (cx - bx);
+            fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+            while(isinf(fu) || isnan(fu))
+            {
+                u = bx + (u - bx) / 2.0;
+                fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+            }
+
+        }
+        else if ((cx - u) * (u - ulim) > 0.0)
+        {
+            fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+            if(fu < fc)
+            {
+                shft3(&bx, &cx, &u, u + GOLD * (u - cx));
+                shft3(&fb, &fc, &fu, f(u, model, n_samples, seed, scratch1, scratch2, pool));
+            }
+
+        }
+        else if ((u - ulim) * (ulim - cx) >= 0.0)
+        {
+            u = ulim;
+            fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+        }
+        else
+        {
+            u = cx + GOLD * (cx - bx);
+            fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+            while(isinf(fu) || isnan(fu))
+            {
+                u = bx + (u - bx) / 2.0;
+                fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+            }
+
+        }
+
+        shft3(&ax, &bx, &cx, u);
+        shft3(&fa, &fb, &fc, fu);
+    }
+
+    return (BayLaBracketPoints){ .xa = ax, .xb = bx, .xc = cx, .fxa = fa, .fxb = fb, .fxc = fc };
+}
+
+typedef struct
+{
+    f64 xmin;
+    f64 fmin;
+} BayLaMinimizationPair;
+
+static BayLaMinimizationPair
+bayla_find_minima(BayLaHyperParameterFuncOptFunc f, f64 initial_guess, BayLaModel const *model, size n_samples, u64 seed, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool)
+{
+    BayLaMinimizationPair ret_val = {0};
+
+    BayLaBracketPoints bp = bayla_bracket_minima(f, initial_guess, model, n_samples, seed, scratch1, scratch2, pool);
+#if 0
+    printf("xa = %e xb = %e xc = %e\n", bp.xa, bp.xb, bp.xc);
+    printf("fa = %e fb = %e fc = %e\n", bp.fxa, bp.fxb, bp.fxc);
+#endif
+
+    size const ITMAX = 1000;
+    f64 const CGOLD = 0.3819660;
+    f64 const ZEPS = 0.0; /* DBL_EPSILON * 1.0e-3; */ /* We're going to be dealing with VERY small numbers. */
+    f64 const tol = 3.0e-8;
+
+    f64 d = NAN;
+    f64 e = 0.0;
+
+    f64 a = (bp.xa < bp.xc ? bp.xa : bp.xc);
+    f64 b = (bp.xa > bp.xc ? bp.xa : bp.xc);
+    f64 x = bp.xb;
+    f64 w = bp.xb;
+    f64 v = bp.xb;
+    f64 u = NAN;
+
+    f64 fx = f(x, model, n_samples, seed, scratch1, scratch2, pool);
+    f64 fw = fx;
+    f64 fv = fx;
+    f64 fu = NAN;
+
+    for(size i = 0; i < ITMAX; ++i)
+    {
+        f64 xm = 0.5 * (a + b);
+        f64 tol1 = tol * fabs(x) + ZEPS;
+        f64 tol2 = 2.0 * tol1;
+        if(fabs(x - xm) <= (tol2 - 0.5 *(b - a))) { ret_val = (BayLaMinimizationPair){ .xmin = x, .fmin = fx }; goto DONE; }
+        if(fabs(e) > tol1)
+        {
+            f64 r = (x - w) * (fx - fv);
+            f64 q = (x - v) * (fx - fw);
+            f64 p = (x - v) * q - (x - w) * r;
+            q = 2.0 * (q - r);
+            if(q > 0.0) { p = -p; }
+            q = fabs(q);
+            f64 etemp = e;
+            e = d;
+            if(fabs(p) >= fabs(0.5 * q * etemp) || p <= q * (a - x) || p >= q * (b - x))
+            {
+                e = x >= xm ? a - x : b - x;
+                d = CGOLD * e;
+            }
+            else
+            {
+                d = p / q;
+                u = x + d;
+                if(u - a < tol2 || b - u < tol2) { d = sign(tol1, xm - x); }
+            }
+        }
+        else
+        {
+            e = x > xm ? a - x : b - x;
+            d = CGOLD * e;
+        }
+
+        u = fabs(d) >= tol1 ? x + d : x + sign(tol1, d);
+        fu = f(u, model, n_samples, seed, scratch1, scratch2, pool);
+
+        if(fu <= fx)
+        {
+            if(u >= x) { a = x; } else { b = x; }
+            shft3(&v, &w, &x, u);
+            shft3(&fv, &fw, &fx, fu);
+        }
+        else
+        {
+            if(u < x) { a = u; } else { b = u; }
+            if(fu <= fw || w == x)
+            {
+                v = w; fv = fw;
+                w = u; fw = fu;
+            }
+            else if(fu <= fv || v == x || v == w)
+            {
+                v = u; fv = fu;
+            }
+        }
+    }
+
+    Panic();
+DONE:
+
+    return ret_val;
+}
+
+API BayLaSamples 
+bayla_importance_sample_gauss_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool)
+{
+    BayLaMinimizationPair min_result = bayla_find_minima(bayla_evaluate_samples_for_ess_gauss_approx, 1.0, model, n_samples, seed, scratch1, scratch2, pool);
+#if 0
+    printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
+#endif
+
+    return bayla_importance_sample_gauss_approx_par_scaled(model, min_result.xmin, n_samples, seed, alloc, scratch1, pool);
+}
+
+API BayLaSamples 
+bayla_importance_sample_studt_approx_optimize(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch1, MagAllocator scratch2, CoyThreadPool *pool)
+{
+    BayLaMinimizationPair min_result = bayla_find_minima(bayla_evaluate_samples_for_ess_stud_t_approx, 2.5, model, n_samples, seed, scratch1, scratch2, pool);
+#if 0
+    printf("min_result.xmin = %e min_result.fmin = %e\n", min_result.xmin, min_result.fmin);
+#endif
+
+    return bayla_importance_sample_studt_approx(model, min_result.xmin, n_samples, seed, alloc, scratch1);
 }
 
 #pragma warning(pop)
