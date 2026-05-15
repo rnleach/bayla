@@ -216,7 +216,6 @@ constant_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_pos
 {
     Assert(num_params == 2);
 
-    f64 v0 = max_a_posteriori_params[0];
     f64 sigma = max_a_posteriori_params[1];
 
     UserData *data = user_data;
@@ -224,7 +223,7 @@ constant_model_2d_hessian(void *user_data, size num_params, f64 const *max_a_pos
     f64 y_bar = data->y_bar;
     f64 y_sq_bar = data->y_sq_bar;
 
-    f64 Q = v0 * v0 - 2.0 * v0 * y_bar + y_sq_bar;
+    f64 Q = y_sq_bar - y_bar * y_bar;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(2, alloc);
 
@@ -482,13 +481,13 @@ linear_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_poster
     f64 x_bar = data->x_bar;
     f64 xy_bar = data->xy_bar;
 
-    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b * x_sq_bar + y_sq_bar;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(3, alloc);
 
     f64 sigma2 = sigma * sigma;
     f64 sigma4 = sigma2 * sigma2;
-    f64 pf = -N / sigma2; /* commone pre-multiplier */
+    f64 pf = -N / sigma2; /* common pre-multiplier */
 
     hess.data[MATRIX_IDX(0, 0, 3)] = pf;
     hess.data[MATRIX_IDX(0, 1, 3)] = hess.data[MATRIX_IDX(1, 0, 3)] = pf * x_bar;
