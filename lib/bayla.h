@@ -1318,7 +1318,7 @@ bayla_importance_sample_gauss_approx_par_scaled(BayLaModel const *model, f64 sf,
     BayLaGaussApproxSamplerInnerArgs *inner_args = eco_arena_nmalloc(scratch, n_threads, BayLaGaussApproxSamplerInnerArgs);
     CoyFuture *futures = eco_arena_nmalloc(scratch, n_threads, CoyFuture);
     CoyBatchCompletion bc = {0};
-    coy_batch_completion_init(&bc, n_threads);
+    coy_batch_completion_init(&bc, pool);
 
     size const block_size = n_samples / n_threads;
     size const left_overs = n_samples % n_threads;
@@ -1343,7 +1343,7 @@ bayla_importance_sample_gauss_approx_par_scaled(BayLaModel const *model, f64 sf,
         inner_args[t].ws = ws;
 
         futures[t] = coy_future_create(bayla_importance_sample_gauss_approx_par_inner, &inner_args[t]);
-        coy_threadpool_submit(pool, &futures[t]);
+        coy_batch_completion_task_submit(&bc, &futures[t]);
 
         start_idx = end_idx;
     }
