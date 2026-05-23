@@ -274,7 +274,7 @@ all_sampler_tests(void)
 {
     printf("\n             Sampler Tests\n");
 
-#if 0
+#if 1
     crude_sampler_tests();
 #endif
 
