@@ -99,6 +99,7 @@ API BayLaLogValue bayla_log_value_map_into_log_domain(f64 non_log_domain_value);
 API f64 bayla_log_value_map_out_of_log_domain(BayLaLogValue log_val);
 API BayLaLogValue bayla_log_value_add(BayLaLogValue left, BayLaLogValue right);
 API BayLaLogValue bayla_log_value_subtract(BayLaLogValue left, BayLaLogValue right);
+API BayLaLogValue bayla_log_value_squared_difference(BayLaLogValue left, BayLaLogValue right);
 API BayLaLogValue bayla_log_value_multiply(BayLaLogValue left, BayLaLogValue right);
 API BayLaLogValue bayla_log_value_divide(BayLaLogValue numerator, BayLaLogValue denominator);
 API BayLaLogValue bayla_log_value_reciprocal(BayLaLogValue log_val);
@@ -201,12 +202,23 @@ API BayLaLogValue bayla_model_evaluate(BayLaModel const *model, f64 const *param
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                  Sampling and Statistics
  *-------------------------------------------------------------------------------------------------------------------------*/
+/* A list of samples.
+ * 
+ * Each row in rows has ndim + 3 values. The first ndim (indexes 0..(ndim -1)) are the sample values of the parameters.
+ *    index ndim + 0 = the calculated value of log(p) - the target distribution 
+ *    index ndim + 1 = the calculated value of log(q) - the proposal distribution value
+ *    index ndim + 2 = the NORMALIZED sample weight log(p/q) after the values have been normalized to sum to 1. As you
+ *                     would expect, the normalization is effective in sum(p/q) = 1, and NOT sum(log(p/q)) = 1.
+ *
+ * The last 3 columns are in the log-domain, and so they should be wrapped in BayLaLogValue to use them.
+ */
 typedef struct
 {
     size n_samples;
     size ndim;
     f64 neff;
     BayLaLogValue z_evidence;
+    BayLaLogValue z_evidence_std;
     f64 *rows;             /* n_samples x (ndim + 3), last 3 columns are in log domain, wrap them BayLaLogValue to use */
     b32 valid;
 } BayLaSamples;
@@ -633,6 +645,26 @@ bayla_log_value_subtract(BayLaLogValue left, BayLaLogValue right)
     if(l == r) { return (BayLaLogValue){ .val = - INFINITY}; }
 
     f64 val = l + bayla_log1mexp(l - r);
+    return (BayLaLogValue){.val = val };
+}
+
+API BayLaLogValue 
+bayla_log_value_squared_difference(BayLaLogValue left, BayLaLogValue right)
+{
+    f64 l = left.val;
+    f64 r = right.val;
+
+    if(isinf(l) && isinf(r) && r > 0.0) { return (BayLaLogValue){ .val = NAN }; }
+    if(l == r) { return (BayLaLogValue){ .val = - INFINITY}; }
+
+    if(r > l)
+    {
+        f64 tmp = l;
+        l = r; 
+        r = tmp;
+    }
+
+    f64 val = 2.0 * (l + bayla_log1mexp(l - r));
     return (BayLaLogValue){.val = val };
 }
 
@@ -1126,6 +1158,44 @@ bayla_model_evaluate(BayLaModel const *model, f64 const *parameter_vals)
     return bayla_log_value_create(log_prob);
 }
 
+API void 
+bayla_internal_calculate_evidence_and_neff_and_normalize_samples(BayLaSamples *samples, BayLaLogValue *ws, MagAllocator *scratch)
+{
+    i32 const ndim = samples->ndim;
+    size const widx = ndim + 2;
+    size const ncols = ndim + 3;            /* The last 3 are P, Q, and W */
+    size n_samples = samples->n_samples;
+
+    /* First pass: Calculate evidence */
+    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
+    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
+    samples->z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
+
+    BayLaLogValue *deltas = eco_arena_nmalloc(scratch, n_samples, BayLaLogValue);
+
+    /* Second pass: Normalize weights and square them for calculating effective sample size, estimate error of evidence */
+    for(size s = 0; s < n_samples; ++s)
+    {
+        /* Normalize the weights in the output */
+        f64 *row = &samples->rows[s * ncols];
+        row[widx] -= w_acc.val;
+
+        deltas[s] = bayla_log_value_squared_difference(ws[s], samples->z_evidence);
+
+        /* Normalize the weights and square them for calculating the effective sample size. */
+        ws[s] = bayla_log_value_divide(ws[s], w_acc);
+        ws[s] = bayla_log_value_power(ws[s], 2.0);
+    }
+
+    samples->z_evidence_std = bayla_log_values_sum(n_samples, 0, 1, deltas);
+    samples->z_evidence_std = bayla_log_value_divide(samples->z_evidence_std, bayla_log_value_map_into_log_domain(n_samples - 1));
+    samples->z_evidence_std = bayla_log_value_divide(samples->z_evidence_std, l_n_samples);
+    samples->z_evidence_std = bayla_log_value_power(samples->z_evidence_std, 0.5);
+
+    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
+    samples->neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+}
+
 API BayLaSamples 
 bayla_importance_sample_gauss_approx(BayLaModel const *model, size n_samples, u64 seed, MagAllocator *alloc, MagAllocator scratch_)
 {
@@ -1136,7 +1206,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, size n_samples, u6
     size const pidx = ndim + 0;
     size const qidx = ndim + 1;
     size const widx = ndim + 2;
-    size const ncols = ndim + 3;            /* The last 3 are Q, P, and W */
+    size const ncols = ndim + 3;            /* The last 3 are P, Q, and W */
     f64 *rows = eco_arena_nmalloc(alloc, ncols * n_samples, f64);
     Assert(rows);
 
@@ -1195,20 +1265,7 @@ bayla_importance_sample_gauss_approx(BayLaModel const *model, size n_samples, u6
         ws[s] = ld_wi;
     }
 
-    /* Calculate evidence */
-    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
-    samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
-
-    /* Normalize weights and square them for calculating effective sample size */
-    for(size s = 0; s < n_samples; ++s)
-    {
-        ws[s] = bayla_log_value_divide(ws[s], w_acc);
-        ws[s] = bayla_log_value_power(ws[s], 2.0);
-    }
-
-    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+    bayla_internal_calculate_evidence_and_neff_and_normalize_samples(&samples, ws, scratch);
 
     if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
 
@@ -1351,20 +1408,7 @@ bayla_importance_sample_gauss_approx_par_scaled(BayLaModel const *model, f64 sf,
     coy_batch_completion_wait(&bc);
     coy_batch_completion_destroy(&bc);
 
-    /* Calculate evidence */
-    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
-    samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
-
-    /* Normalize weights and square them for calculating effective sample size */
-    for(size s = 0; s < n_samples; ++s)
-    {
-        ws[s] = bayla_log_value_divide(ws[s], w_acc);
-        ws[s] = bayla_log_value_power(ws[s], 2.0);
-    }
-
-    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+    bayla_internal_calculate_evidence_and_neff_and_normalize_samples(&samples, ws, scratch);
 
     if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
 
@@ -1434,20 +1478,7 @@ bayla_importance_sample_uniform(BayLaModel const *model, size n_samples, u64 see
         ws[s] = ld_wi;
     }
 
-    /* Calculate evidence */
-    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
-    samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
-
-    /* Normalize weights and square them for calculating effective sample size */
-    for(size s = 0; s < n_samples; ++s)
-    {
-        ws[s] = bayla_log_value_divide(ws[s], w_acc);
-        ws[s] = bayla_log_value_power(ws[s], 2.0);
-    }
-
-    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+    bayla_internal_calculate_evidence_and_neff_and_normalize_samples(&samples, ws, scratch);
 
     if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
 
@@ -1520,20 +1551,7 @@ bayla_importance_sample_studt_approx(BayLaModel const *model, f64 nu, size n_sam
         ws[s] = ld_wi;
     }
 
-    /* Calculate evidence */
-    BayLaLogValue w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    BayLaLogValue l_n_samples = bayla_log_value_map_into_log_domain((f64)n_samples);
-    samples.z_evidence = bayla_log_value_divide(w_acc, l_n_samples);
-
-    /* Normalize weights and square them for calculating effective sample size */
-    for(size s = 0; s < n_samples; ++s)
-    {
-        ws[s] = bayla_log_value_divide(ws[s], w_acc);
-        ws[s] = bayla_log_value_power(ws[s], 2.0);
-    }
-
-    w_acc = bayla_log_values_sum(n_samples, 0, 1, ws);
-    samples.neff = bayla_log_value_map_out_of_log_domain(bayla_log_value_reciprocal(w_acc));
+    bayla_internal_calculate_evidence_and_neff_and_normalize_samples(&samples, ws, scratch);
 
     if(isnan(samples.neff) || isinf(samples.neff)) { samples.valid = false; }
 
@@ -1595,7 +1613,7 @@ bayla_samples_calculate_ci_p_thresh(BayLaSamples *samples, f64 ci_pct, MagAlloca
     size const pidx = ndim + 0;
     size const widx = ndim + 2;
 
-    f64 total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
+    f64 const total_weight = 1.0;
 
     f64 *row_scratch = eco_arena_nmalloc(&scratch, ncols * n_samples, f64);
     Assert(row_scratch);
@@ -1643,7 +1661,7 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
     size const widx = ndim + 2;
     size const nbins = n_samples / 10;
 
-    f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
+    f64 const total_weight = 1.0;
     f64 const *const rows = samples->rows;
 
     /* Find the minimum and maximum values in our dataset. */
@@ -1710,26 +1728,10 @@ bayla_samples_calculate_ci(BayLaSamples *samples, f64 ci_pct, size param_idx, Ma
 API BayLaErrorValue 
 bayla_samples_estimate_evidence(BayLaSamples *samples)
 {
-    size const n_samples = samples->n_samples;
-    size const ndim = samples->ndim;
-    size const ncols = ndim + 3;
-    size const widx = ndim + 2;
-    f64 const *rows = samples->rows;
     f64 const z = bayla_log_value_map_out_of_log_domain(samples->z_evidence);
+    f64 const z_std = bayla_log_value_map_out_of_log_domain(samples->z_evidence_std);
 
-    ElkKahanAccumulator v_acc = {0};
-
-    for(size r = 0; r < n_samples; ++r)
-    {
-        f64 const *row = &rows[r * ncols];
-        f64 dw = exp(row[widx]) - z;
-
-        v_acc = elk_kahan_accumulator_add(v_acc, dw * dw);
-    }
-
-    f64 std = sqrt(v_acc.sum / (n_samples * n_samples));
-
-    return (BayLaErrorValue){ .val = z, .std = std};
+    return (BayLaErrorValue){ .val = z, .std = z_std};
 }
 
 API BayLaErrorValue 
@@ -1740,7 +1742,7 @@ bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f
     size const ncols = ndim + 3;
     size const widx = ndim + 2;
     f64 const *rows = samples->rows;
-    f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
+    f64 const total_weight = 1.0;
 
     ElkKahanAccumulator f_acc = {0};
 
@@ -1765,7 +1767,8 @@ bayla_samples_calculate_expectation(BayLaSamples *samples, f64 (*func)(size n, f
         v_acc = elk_kahan_accumulator_add(v_acc, df * df * w);
     }
 
-    f64 std = sqrt(v_acc.sum / total_weight / samples->neff);
+    f64 std = v_acc.sum / (1.0 - 1.0 / samples->neff);
+    std = sqrt(std / samples->neff);
 
     return (BayLaErrorValue){ .val = mean, .std = std};
 }
@@ -1778,7 +1781,7 @@ bayla_samples_calculate_prob_predicate(BayLaSamples *samples, b32 (*func)(size n
     size const ncols = ndim + 3;
     size const widx = ndim + 2;
     f64 const *rows = samples->rows;
-    f64 const total_weight = bayla_log_value_map_out_of_log_domain(samples->z_evidence) * n_samples;
+    f64 const total_weight = 1.0;
 
     ElkKahanAccumulator f_acc = {0};
 

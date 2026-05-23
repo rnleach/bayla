@@ -1,6 +1,118 @@
-On this branch I'm starting to experiment with importance sampling.
+Comparison of before and after of trying to make better error estimates.
 
-TODO
- - Calculate Effective Sample Size given a list of weights.
- - Generate numbers from a multi-dimensional normal distribution.
+  ---------- Starting Tests ----------
+
+
+             ...Simple Model Tests
+ndim =  2 n_samples = 100000 neff = 100000 effective ratio = 1.00 z_evidence = 1 ± 3.51094e-17 [0.00%]) p_thresh =  8.00e-03
+ndim =  2 n_samples = 100000 neff = 100000 effective ratio = 1.00 z_evidence = 1 ± 3.51096e-17 [0.00%]) p_thresh =  8.00e-03
+
+   Credible Intervals - x0: [ -3.295425 -> -0.301869 ->  2.710088]        x1: [ -0.723933 ->  0.800495 ->  2.383818 ]
+   Credible Intervals - x0: [ -3.295425 -> -0.301869 ->  2.710088]        x1: [ -0.723933 ->  0.800495 ->  2.383818 ]
+
+Expectation (w/error) - x0:                -0.301869 ±   0.013400 (4.44%) x1:                 0.800495 ±   0.006699 (0.84%)
+Expectation (w/error) - x0:                -0.301869 ±   0.013400 (4.44%) x1:                 0.800495 ±   0.006699 (0.84%)
+
+           Prob > 0.0 - x0:                    41.34%                     x1:                    87.14%
+           Prob > 0.0 - x0:                    41.34%                     x1:                    87.14%
+
+           True Value - x0:                -0.300000                      x1:                 0.800000
+           True Value - x0:                -0.300000                      x1:                 0.800000
+
+   True Value Z-score - x0:                 0.418417                      x1:                -0.221712
+   True Value Z-score - x0:                 0.418415                      x1:                -0.221710
+
+             Evidence Tests
+
+Model Name             ndim n_samples   neff effective ratio z_evidence                       
+                   Log    1     10000   9400            0.94 1.36549e-58 ± 1.03471e-60 [0.76%]
+                   Log    1     10000   9400            0.94 1.36549e-58 ± 1.03476e-60 [0.76%]
+
+      LaPlace Constant    2     10000   9101            0.91 1.46847e-76 ±  1.3844e-78 [0.94%]
+      LaPlace Constant    2     10000   9101            0.91 1.46847e-76 ± 1.38447e-78 [0.94%]
+
+       Stud-T Constant    2     10000   6743            0.67 1.34282e-76 ± 2.79964e-78 [2.08%]
+       Stud-T Constant    2     10000   6743            0.67 1.34282e-76 ± 2.79978e-78 [2.09%]
+
+      Uniform Constant    2     10000     10            0.00  1.4642e-76 ± 1.40559e-76 [96.00%]
+      Uniform Constant    2     10000     10            0.00  1.4642e-76 ± 1.40566e-76 [96.00%]
+
+  LaPlace Constant Tau    2     10000   9668            0.97 1.46619e-76 ± 8.15237e-79 [0.56%]
+  LaPlace Constant Tau    2     10000   9668            0.97 1.46619e-76 ± 8.15278e-79 [0.56%]
+
+   Stud-T Constant Tau    2     10000   6767            0.68 1.31895e-76 ± 2.73508e-78 [2.07%]
+   Stud-T Constant Tau    2     10000   6767            0.68 1.31895e-76 ± 2.73522e-78 [2.07%]
+
+  Uniform Constant Tau    2     10000      8            0.00 1.15393e-76 ± 1.23711e-76 [107.21%]
+  Uniform Constant Tau    2     10000      8            0.00 1.15393e-76 ± 1.23717e-76 [107.21%]
+  
+        LaPlace Linear    3     10000   8875            0.89  3.3019e-24 ± 3.52716e-26 [1.07%]
+        LaPlace Linear    3     10000   8875            0.89  3.3019e-24 ± 3.52734e-26 [1.07%]
+
+         Stud-T Linear    3     10000   6006            0.60 2.95647e-24 ± 7.23263e-26 [2.45%]
+         Stud-T Linear    3     10000   6006            0.60 2.95647e-24 ± 7.23299e-26 [2.45%]
+
+        Uniform Linear    3     10000      1            0.00 5.53216e-35 ± 1.65924e-34 [299.93%]
+        Uniform Linear    3     10000      1            0.00 5.53216e-35 ± 1.65932e-34 [299.94%]
+
+    LaPlace Linear Tau    3     10000   9319            0.93 1.21997e-24 ± 9.89634e-27 [0.81%]
+    LaPlace Linear Tau    3     10000   9319            0.93 1.21997e-24 ± 9.89684e-27 [0.81%]
+
+     Stud-T Linear Tau    3     10000   5962            0.60 1.05877e-24 ±  2.6142e-26 [2.47%]
+     Stud-T Linear Tau    3     10000   5962            0.60 1.05877e-24 ± 2.61433e-26 [2.47%]
+
+    Uniform Linear Tau    3     10000      2            0.00 4.76527e-32 ± 1.13256e-31 [237.67%]
+    Uniform Linear Tau    3     10000      2            0.00 4.76527e-32 ± 1.13262e-31 [237.68%]
+
+     LaPlace 2nd Order    4    100000  81967            0.82 2.21651e-20 ± 9.86293e-23 [0.44%]
+     LaPlace 2nd Order    4    100000  81967            0.82 2.21651e-20 ± 9.86297e-23 [0.44%]
+
+      Stud-T 2nd Order    4    100000  53086            0.53 2.09193e-20 ± 1.86564e-22 [0.89%]
+      Stud-T 2nd Order    4    100000  53086            0.53 2.09193e-20 ± 1.86565e-22 [0.89%]
+
+ LaPlace 2nd Order Tau    4    100000  89972            0.90 2.21539e-20 ± 7.01638e-23 [0.32%]
+ LaPlace 2nd Order Tau    4    100000  89972            0.90 2.21539e-20 ± 7.01642e-23 [0.32%]
+
+  Stud-T 2nd Order Tau    4    100000  54415            0.54 2.02237e-20 ± 1.75605e-22 [0.87%]
+  Stud-T 2nd Order Tau    4    100000  54415            0.54 2.02237e-20 ± 1.75606e-22 [0.87%]
+
+     LaPlace 3rd Order    5    100000  75619            0.76 4.31592e-14 ± 2.32491e-16 [0.54%]
+     LaPlace 3rd Order    5    100000  75619            0.76 4.31592e-14 ± 2.32492e-16 [0.54%]
+
+      Stud-T 3rd Order    5    100000  47904            0.48 4.16991e-14 ± 4.12538e-16 [0.99%]
+      Stud-T 3rd Order    5    100000  47904            0.48 4.16991e-14 ±  4.1254e-16 [0.99%]
+
+ LaPlace 3rd Order Tau    5    100000  85918            0.86 4.31038e-14 ± 1.65549e-16 [0.38%]
+ LaPlace 3rd Order Tau    5    100000  85918            0.86 4.31038e-14 ±  1.6555e-16 [0.38%]
+ 
+  Stud-T 3rd Order Tau    5    100000  49766            0.50 4.07133e-14 ± 3.88053e-16 [0.95%]
+  Stud-T 3rd Order Tau    5    100000  49766            0.50 4.07133e-14 ± 3.88055e-16 [0.95%]
+
+     LaPlace 4th Order    6    500000 348976            0.70  2.2629e-17 ± 6.31576e-20 [0.28%]
+     LaPlace 4th Order    6    500000 348976            0.70  2.2629e-17 ± 6.31577e-20 [0.28%]
+
+      Stud-T 4th Order    6    500000 214703            0.43 2.19848e-17 ±  1.0752e-19 [0.49%]
+      Stud-T 4th Order    6    500000 214703            0.43 2.19848e-17 ±  1.0752e-19 [0.49%]
+
+ LaPlace 4th Order Tau    6    500000 403717            0.81 2.26265e-17 ±   4.688e-20 [0.21%]
+ LaPlace 4th Order Tau    6    500000 403717            0.81 2.26265e-17 ± 4.68801e-20 [0.21%]
+
+  Stud-T 4th Order Tau    6    500000 226563            0.45 2.17647e-17 ± 1.01443e-19 [0.47%]
+  Stud-T 4th Order Tau    6    500000 226563            0.45 2.17647e-17 ± 1.01444e-19 [0.47%]
+
+     LaPlace 5th Order    7    500000 321947            0.64 6.84003e-23 ± 2.15813e-25 [0.32%]
+     LaPlace 5th Order    7    500000 321947            0.64 6.84003e-23 ± 2.15813e-25 [0.32%]
+
+      Stud-T 5th Order    7    500000 189333            0.38 6.58761e-23 ± 3.58013e-25 [0.54%]
+      Stud-T 5th Order    7    500000 189333            0.38 6.58761e-23 ± 3.58013e-25 [0.54%]
+
+ LaPlace 5th Order Tau    7   1000000 759664            0.76 6.83578e-23 ± 1.15347e-25 [0.17%]
+ LaPlace 5th Order Tau    7   1000000 759664            0.76 6.83578e-23 ± 1.15347e-25 [0.17%]
+
+  Stud-T 5th Order Tau    7   1000000 405795            0.41 6.45154e-23 ± 2.34207e-25 [0.36%]
+  Stud-T 5th Order Tau    7   1000000 405795            0.41 6.45154e-23 ± 2.34207e-25 [0.36%]
+
+ 
+Total Runtime = 29.468 seconds at a frequency of 4392123120
+Total Runtime = 32.859 seconds at a frequency of 4392034230
 
