@@ -645,7 +645,7 @@ linear_tau_model_2d_hessian(void *user_data, size num_parms, f64 const *max_a_po
     f64 x_bar = data->x_bar;
     f64 xy_bar = data->xy_bar;
 
-    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b *x_sq_bar + y_sq_bar;
+    f64 Q = v0 * v0 + 2.0 * (v0 * b * x_bar - v0 * y_bar - b * xy_bar) + b * b * x_sq_bar + y_sq_bar;
 
     BayLaSquareMatrix hess = bayla_square_matrix_create(3, alloc);
 
