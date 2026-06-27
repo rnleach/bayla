@@ -3195,7 +3195,7 @@ all_evidence_tests(void)
     initialize_global_data(NUM_DATA_POINTS);
     COY_END_PROFILE(ap);
 
-    printf("%-14s %-4s %-9s %-6s %-15s %-33s\n",
+    printf("%-22s %-4s %9s %6s %15s %33s\n",
             "Model Name", "ndim", "n_samples", "neff", "effective ratio", "z_evidence");
 
     ap = COY_START_PROFILE_BLOCK("Evidence Tests Log Model");
